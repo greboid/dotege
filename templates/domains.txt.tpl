@@ -1,5 +1,3 @@
-{{ range .Containers }}
-    {{- with index .Labels "com.chameth.vhost" -}}
-        {{ . | replace "," " " }}{{ "\n" }}
-    {{- end -}}
+{{ range .Hostnames }}
+    {{- .Name }}{{ range $san, $true := .Alternatives }} {{ $san }}{{ end }}
 {{ end }}

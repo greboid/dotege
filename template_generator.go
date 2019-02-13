@@ -11,6 +11,7 @@ import (
 
 type Context struct {
 	Containers map[string]Container
+	Hostnames map[string]Hostname
 }
 
 type TemplateConfig struct {
