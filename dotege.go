@@ -42,7 +42,8 @@ func main() {
 
 	templateGenerator := NewTemplateGenerator()
 	templateGenerator.AddTemplate(TemplateConfig{
-		Source: "./templates/domains.txt.tpl",
+		Source:      "./templates/domains.txt.tpl",
+		Destination: "domains.txt",
 	})
 
 	monitor := NewContainerMonitor(cli, containerChan, expiryChan)

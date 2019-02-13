@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"io/ioutil"
 	"path"
 	"sort"
 	"strings"
@@ -49,22 +49,31 @@ func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
 		panic(err)
 	}
 
+	buf, _ := ioutil.ReadFile(config.Destination)
 	t.templates = append(t.templates, &Template{
 		config:   config,
-		content:  "", // TODO: Read this in initially
+		content:  string(buf),
 		template: tmpl,
 	})
 }
 
 func (t *TemplateGenerator) Generate(context Context) {
 	for _, tmpl := range t.templates {
-		// TODO: Actually write to file :)
-		// TODO: Retrieve the output and check if it matches our cache
-		fmt.Printf("--- Writing %s to %s ---\n", tmpl.config.Source, tmpl.config.Destination)
-		err := tmpl.template.Execute(os.Stdout, context)
-		fmt.Printf("--- / writing %s ---\n", tmpl.config.Destination)
+		fmt.Printf("Checking %s\n", tmpl.config.Source)
+		builder := &strings.Builder{}
+		err := tmpl.template.Execute(builder, context)
 		if err != nil {
 			panic(err)
+		}
+		if tmpl.content != builder.String() {
+			fmt.Printf("--- %s updated, writing to %s ---\n", tmpl.config.Source, tmpl.config.Destination)
+			fmt.Printf("%s", builder.String())
+			fmt.Printf("--- / writing %s ---\n", tmpl.config.Destination)
+			tmpl.content = builder.String()
+			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
