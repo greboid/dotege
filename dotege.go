@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/docker/docker/client"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"os/signal"
 	"strings"
@@ -26,6 +28,11 @@ type Hostname struct {
 	Containers   []Container
 }
 
+type Config struct {
+	Templates []TemplateConfig
+	Labels    LabelConfig
+}
+
 func monitorSignals() <-chan bool {
 	signals := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -42,6 +49,15 @@ func monitorSignals() <-chan bool {
 }
 
 func main() {
+	config := zap.NewDevelopmentConfig()
+	config.DisableCaller = true
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.OutputPaths = []string{"stdout"}
+	config.ErrorOutputPaths = []string{"stdout"}
+	logger, _ := config.Build()
+	sugar := logger.Sugar()
+	sugar.Info("Dotege is starting")
+
 	done := monitorSignals()
 	containerChan := make(chan Container, 1)
 	expiryChan := make(chan string, 1)
@@ -54,13 +70,17 @@ func main() {
 		panic(err)
 	}
 
-	templateGenerator := NewTemplateGenerator()
+	templateGenerator := NewTemplateGenerator(sugar)
 	templateGenerator.AddTemplate(TemplateConfig{
 		Source:      "./templates/domains.txt.tpl",
 		Destination: "domains.txt",
 	})
+	templateGenerator.AddTemplate(TemplateConfig{
+		Source:      "./templates/haproxy.cfg.tpl",
+		Destination: "haproxy.cfg",
+	})
 
-	monitor := NewContainerMonitor(cli, containerChan, expiryChan)
+	monitor := NewContainerMonitor(sugar, cli, containerChan, expiryChan)
 	go monitor.Monitor()
 
 	go func() {

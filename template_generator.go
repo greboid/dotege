@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"path"
 	"sort"
@@ -26,6 +26,7 @@ type Template struct {
 }
 
 type TemplateGenerator struct {
+	logger *zap.SugaredLogger
 	templates []*Template
 }
 
@@ -40,14 +41,17 @@ var funcMap = template.FuncMap{
 	},
 }
 
-func NewTemplateGenerator() *TemplateGenerator {
-	return &TemplateGenerator{}
+func NewTemplateGenerator(logger *zap.SugaredLogger) *TemplateGenerator {
+	return &TemplateGenerator{
+		logger: logger,
+	}
 }
 
 func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
+	t.logger.Infof("Adding template from %s, writing to %s", config.Source, config.Destination)
 	tmpl, err := template.New(path.Base(config.Source)).Funcs(funcMap).ParseFiles(config.Source)
 	if err != nil {
-		panic(err)
+		t.logger.Fatal("Unable to parse template", err)
 	}
 
 	buf, _ := ioutil.ReadFile(config.Destination)
@@ -60,20 +64,19 @@ func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
 
 func (t *TemplateGenerator) Generate(context Context) {
 	for _, tmpl := range t.templates {
-		fmt.Printf("Checking %s\n", tmpl.config.Source)
+		t.logger.Debugf("Checking for updates to %s", tmpl.config.Source)
 		builder := &strings.Builder{}
 		err := tmpl.template.Execute(builder, context)
 		if err != nil {
 			panic(err)
 		}
 		if tmpl.content != builder.String() {
-			fmt.Printf("--- %s updated, writing to %s ---\n", tmpl.config.Source, tmpl.config.Destination)
-			fmt.Printf("%s", builder.String())
-			fmt.Printf("--- / writing %s ---\n", tmpl.config.Destination)
+			t.logger.Debugf("%s has been updated, writing to %s", tmpl.config.Source, tmpl.config.Destination)
+			t.logger.Debug(builder.String())
 			tmpl.content = builder.String()
 			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
 			if err != nil {
-				panic(err)
+				t.logger.Fatal("Unable to write template", err)
 			}
 		}
 	}

@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"go.uber.org/zap"
 	"time"
 )
 
 type ContainerMonitor struct {
+	logger             *zap.SugaredLogger
 	newContainers      chan<- Container
 	goneContainerNames chan<- string
 	client             *client.Client
@@ -19,11 +20,12 @@ type ContainerMonitor struct {
 	expiryTimer        *time.Timer
 }
 
-func NewContainerMonitor(client *client.Client, newContainerChannel chan<- Container, goneContainerChannel chan<- string) *ContainerMonitor {
+func NewContainerMonitor(logger *zap.SugaredLogger, client *client.Client, newContainerChannel chan<- Container, goneContainerChannel chan<- string) *ContainerMonitor {
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()
 
 	return &ContainerMonitor{
+		logger:             logger,
 		newContainers:      newContainerChannel,
 		goneContainerNames: goneContainerChannel,
 		client:             client,
@@ -56,7 +58,7 @@ func (c *ContainerMonitor) Monitor() {
 			c.publishExpiredContainers()
 
 		case err := <-errChan:
-			panic(err)
+			c.logger.Fatal("Error received from docker events API", err)
 		}
 	}
 }
@@ -64,10 +66,11 @@ func (c *ContainerMonitor) Monitor() {
 func (c *ContainerMonitor) publishExistingContainers() {
 	containers, err := c.client.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
-		panic(err)
+		c.logger.Fatal("Error received trying to list containers", err)
 	}
 
 	for _, container := range containers {
+		c.logger.Infof("Found existing container %s", container.Names[0][1:])
 		c.newContainers <- Container{
 			Id:     container.ID,
 			Name:   container.Names[0][1:],
@@ -79,13 +82,14 @@ func (c *ContainerMonitor) publishExistingContainers() {
 func (c *ContainerMonitor) publishNewContainer(id string) {
 	container, err := c.client.ContainerInspect(context.Background(), id)
 	if err != nil {
-		panic(err)
+		c.logger.Fatal("Error received trying to inspect container", err)
 	}
 	c.newContainers <- Container{
 		Id:     container.ID,
 		Name:   container.Name[1:],
 		Labels: container.Config.Labels,
 	}
+	c.logger.Info("Found new container %s", container.Name[1:])
 	delete(c.expiryTimes, container.Name[1:])
 }
 
@@ -93,9 +97,9 @@ func (c *ContainerMonitor) scheduleExpiry(name string) {
 	now := time.Now()
 	expiryTime := now.Add(c.deletionTime)
 	c.expiryTimes[name] = expiryTime
-	fmt.Printf("Scheduling expiry timer for %s\n", name)
+	c.logger.Info("Scheduling expiry timer for %s", name)
 	if c.nextExpiry.Before(now) || c.nextExpiry.After(expiryTime) {
-		fmt.Printf("Starting expiry timer with default duration\n")
+		c.logger.Debug("Starting expiry timer with default duration")
 		c.expiryTimer.Reset(c.deletionTime + 1*time.Second)
 		c.nextExpiry = expiryTime
 	}
@@ -107,7 +111,7 @@ func (c *ContainerMonitor) publishExpiredContainers() {
 
 	for name, expiryTime := range c.expiryTimes {
 		if expiryTime.Before(now) {
-			fmt.Printf("Expiring %s\n", name)
+			c.logger.Info("Expiring %s", name)
 			delete(c.expiryTimes, name)
 			c.goneContainerNames <- name
 		} else if next == 0 || expiryTime.Sub(now) < next {
@@ -116,7 +120,7 @@ func (c *ContainerMonitor) publishExpiredContainers() {
 	}
 
 	if next > 0 {
-		fmt.Printf("Starting expiry timer with duration %s\n", next)
+		c.logger.Debugf("Starting expiry timer with duration %s\n", next)
 		c.expiryTimer.Reset(next + 1*time.Second)
 		c.nextExpiry = now.Add(next)
 	}

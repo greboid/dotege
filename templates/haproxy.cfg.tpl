@@ -22,17 +22,18 @@ frontend main
     bind    :80
     redirect scheme https code 301 if !{ ssl_fc }
     http-response set-header Strict-Transport-Security max-age=15768000
-{{ range .Containers }}
-    {{- if index .Labels "com.chameth.proxy" -}}
-        {{- if index .Labels "com.chameth.vhost" }}
-    use_backend {{ .Name }} if { hdr(host) -i {{ index .Labels "com.chameth.vhost" | split "," | join " || hdr(host) -i " }} }
-        {{- end -}}
-    {{- end -}}
-{{ end }}
-{{ range .Containers }}
-    {{- if index .Labels "com.chameth.proxy" }}
-backend {{ .Name }}
+{{- range .Hostnames }}
+    use_backend {{ .Name | replace "." "_" }} if {hdr(host) -i {{ .Name }}
+        {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end -}}
+    }
+{{- end }}
+{{- range .Hostnames }}
+
+backend {{ .Name | replace "." "_" }}
     mode http
+    {{- range .Containers }}
+        {{- if index .Labels "com.chameth.proxy" }}
     server server1 {{ .Name }}:{{ index .Labels "com.chameth.proxy" }} check resolvers docker_resolver
+        {{- end -}}
     {{- end -}}
 {{ end }}
