@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/csmith/dotege/model"
 	"go.uber.org/zap"
 	"io/ioutil"
 	"path"
@@ -10,23 +11,18 @@ import (
 )
 
 type Context struct {
-	Containers map[string]Container
-	Hostnames map[string]Hostname
-}
-
-type TemplateConfig struct {
-	Source      string
-	Destination string
+	Containers map[string]model.Container
+	Hostnames  map[string]model.Hostname
 }
 
 type Template struct {
-	config   TemplateConfig
+	config   model.TemplateConfig
 	content  string
 	template *template.Template
 }
 
 type TemplateGenerator struct {
-	logger *zap.SugaredLogger
+	logger    *zap.SugaredLogger
 	templates []*Template
 }
 
@@ -47,7 +43,7 @@ func NewTemplateGenerator(logger *zap.SugaredLogger) *TemplateGenerator {
 	}
 }
 
-func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
+func (t *TemplateGenerator) AddTemplate(config model.TemplateConfig) {
 	t.logger.Infof("Adding template from %s, writing to %s", config.Source, config.Destination)
 	tmpl, err := template.New(path.Base(config.Source)).Funcs(funcMap).ParseFiles(config.Source)
 	if err != nil {

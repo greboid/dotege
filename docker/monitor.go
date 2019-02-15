@@ -1,7 +1,8 @@
-package main
+package docker
 
 import (
 	"context"
+	"github.com/csmith/dotege/model"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -9,9 +10,12 @@ import (
 	"time"
 )
 
+// ContainerMonitor watches for newly created and destroyed containers, and emits their information on a channel.
+// Destroyed containers are given a grace period before being announced, to allow for restarts etc to be less
+// disruptive.
 type ContainerMonitor struct {
 	logger             *zap.SugaredLogger
-	newContainers      chan<- Container
+	newContainers      chan<- model.Container
 	goneContainerNames chan<- string
 	client             *client.Client
 	expiryTimes        map[string]time.Time
@@ -20,7 +24,8 @@ type ContainerMonitor struct {
 	expiryTimer        *time.Timer
 }
 
-func NewContainerMonitor(logger *zap.SugaredLogger, client *client.Client, newContainerChannel chan<- Container, goneContainerChannel chan<- string) *ContainerMonitor {
+// NewContainerMonitor creates a new container monitor
+func NewContainerMonitor(logger *zap.SugaredLogger, client *client.Client, newContainerChannel chan<- model.Container, goneContainerChannel chan<- string) *ContainerMonitor {
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()
 
@@ -36,6 +41,8 @@ func NewContainerMonitor(logger *zap.SugaredLogger, client *client.Client, newCo
 	}
 }
 
+// Monitor starts monitoring for changes, and publishes info on any pre-existing containers. It blocks indefinitely,
+// and should be run from a goroutine.
 func (c *ContainerMonitor) Monitor() {
 	args := filters.NewArgs()
 	args.Add("type", "container")
@@ -71,7 +78,7 @@ func (c *ContainerMonitor) publishExistingContainers() {
 
 	for _, container := range containers {
 		c.logger.Infof("Found existing container %s", container.Names[0][1:])
-		c.newContainers <- Container{
+		c.newContainers <- model.Container{
 			Id:     container.ID,
 			Name:   container.Names[0][1:],
 			Labels: container.Labels,
@@ -84,7 +91,7 @@ func (c *ContainerMonitor) publishNewContainer(id string) {
 	if err != nil {
 		c.logger.Fatal("Error received trying to inspect container", err)
 	}
-	c.newContainers <- Container{
+	c.newContainers <- model.Container{
 		Id:     container.ID,
 		Name:   container.Name[1:],
 		Labels: container.Config.Labels,
