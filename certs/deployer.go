@@ -34,20 +34,24 @@ func NewCertificateDeployer(logger *zap.SugaredLogger, channel <-chan model.Foun
 }
 
 func (c *CertificateDeployer) monitor() {
-	select {
-	case cert := <-c.certChannel:
-		c.certs[cert.Hostname] = cert
-		c.deployChannel <- true
+	for {
+		select {
+		case cert := <-c.certChannel:
+			c.certs[cert.Hostname] = cert
+			c.deployChannel <- true
+		}
 	}
 }
 
 func (c *CertificateDeployer) deployAll() {
-	select {
-	case <-c.deployChannel:
-		c.logger.Debug("Checking for certificates requiring deployment")
-		for _, hostname := range c.hostnames {
-			if cert, ok := c.certs[hostname.Name]; ok {
-				c.deploySingle(cert, hostname)
+	for {
+		select {
+		case <-c.deployChannel:
+			c.logger.Debug("Checking for certificates requiring deployment")
+			for _, hostname := range c.hostnames {
+				if cert, ok := c.certs[hostname.Name]; ok {
+					c.deploySingle(cert, hostname)
+				}
 			}
 		}
 	}
