@@ -21,6 +21,7 @@ func NewCertificateManager(logger *zap.SugaredLogger, channel chan<- model.Found
 	return &CertificateMonitor{
 		logger:  logger,
 		channel: channel,
+		certs:   make(map[string]*model.FoundCertificate),
 	}
 }
 
@@ -59,11 +60,9 @@ func (c *CertificateMonitor) scanForCerts(vhost string, dir string) {
 		ext := path.Ext(f.Name())
 		base := path.Base(f.Name())
 		base = base[:len(base)-len(ext)]
-		c.logger.Debugf("File %s has extension %s, base name %s", f.Name(), ext, base)
 		if ext == ".pem" {
 			prefix := strings.Split(base, "-")[0]
 			added := maybeAddPart(&cert, prefix, path.Join(dir, f.Name()))
-			c.logger.Debugf("\tFile prefix is %s, added status %s", prefix, added)
 			if added && f.ModTime().After(cert.ModTime) {
 				cert.ModTime = f.ModTime()
 			}
