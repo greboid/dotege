@@ -81,7 +81,7 @@ func (c *CertificateDeployer) deployFile(name string, content []byte, modTime ti
 	}
 
 	info, err := os.Stat(target)
-	if err != nil && info.ModTime().After(modTime) {
+	if err == nil && info.ModTime().After(modTime) {
 		c.logger.Debugf("Not writing %s as it was modified more recently than our cert", target)
 		return
 	}
