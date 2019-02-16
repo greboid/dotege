@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/csmith/dotege/certs"
 	"github.com/csmith/dotege/docker"
 	"github.com/csmith/dotege/model"
 	"github.com/docker/docker/client"
@@ -32,6 +33,7 @@ func monitorSignals() <-chan bool {
 func main() {
 	config := zap.NewDevelopmentConfig()
 	config.DisableCaller = true
+	config.DisableStacktrace = true
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	config.OutputPaths = []string{"stdout"}
 	config.ErrorOutputPaths = []string{"stdout"}
@@ -50,6 +52,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	certMonitor := certs.NewCertificateManager(sugar)
+	certMonitor.AddDirectory("/certs/certs")
 
 	templateGenerator := NewTemplateGenerator(sugar)
 	templateGenerator.AddTemplate(model.TemplateConfig{
@@ -94,15 +99,15 @@ func main() {
 	}
 }
 
-func getHostnames(containers map[string]model.Container, config model.LabelConfig) (hostnames map[string]model.Hostname) {
-	hostnames = make(map[string]model.Hostname)
+func getHostnames(containers map[string]model.Container, config model.LabelConfig) (hostnames map[string]*model.Hostname) {
+	hostnames = make(map[string]*model.Hostname)
 	for _, container := range containers {
 		if label, ok := container.Labels[config.Hostnames]; ok {
 			names := strings.Split(strings.Replace(label, ",", " ", -1), " ")
 			if hostname, ok := hostnames[names[0]]; ok {
 				hostname.Containers = append(hostname.Containers, container)
 			} else {
-				hostnames[names[0]] = model.Hostname{
+				hostnames[names[0]] = &model.Hostname{
 					Name:         names[0],
 					Alternatives: make(map[string]bool),
 					Containers:   []model.Container{container},
@@ -114,7 +119,7 @@ func getHostnames(containers map[string]model.Container, config model.LabelConfi
 	return
 }
 
-func addAlternatives(hostname model.Hostname, alternatives []string) {
+func addAlternatives(hostname *model.Hostname, alternatives []string) {
 	for _, alternative := range alternatives {
 		hostname.Alternatives[alternative] = true
 	}

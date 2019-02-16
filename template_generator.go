@@ -12,7 +12,7 @@ import (
 
 type Context struct {
 	Containers map[string]model.Container
-	Hostnames  map[string]model.Hostname
+	Hostnames  map[string]*model.Hostname
 }
 
 type Template struct {
@@ -67,8 +67,7 @@ func (t *TemplateGenerator) Generate(context Context) {
 			panic(err)
 		}
 		if tmpl.content != builder.String() {
-			t.logger.Debugf("%s has been updated, writing to %s", tmpl.config.Source, tmpl.config.Destination)
-			t.logger.Debug(builder.String())
+			t.logger.Infof("Writing updated template to %s", tmpl.config.Destination)
 			tmpl.content = builder.String()
 			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
 			if err != nil {
