@@ -60,7 +60,7 @@ func main() {
 	}
 
 	certMonitor := certs.NewCertificateManager(sugar, certChan)
-	certMonitor.AddDirectory("/data/certrequests/certs")
+	certMonitor.AddDirectory("/data/certrequests/certs/")
 	certDeployer := certs.NewCertificateDeployer(sugar, certChan)
 
 	templateGenerator := NewTemplateGenerator(sugar)

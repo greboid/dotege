@@ -31,6 +31,7 @@ func (c *CertificateMonitor) AddDirectory(directory string) {
 }
 
 func (c *CertificateMonitor) scanForFolders(dir string) {
+	c.logger.Debugf("Scanning folder %s for certificates", dir)
 	dirs, err := ioutil.ReadDir(dir)
 	if err != nil {
 		c.logger.Errorf("Unable to read directory %s - %s", dir, err.Error())
@@ -45,6 +46,7 @@ func (c *CertificateMonitor) scanForFolders(dir string) {
 }
 
 func (c *CertificateMonitor) scanForCerts(vhost string, dir string) {
+	c.logger.Debugf("Scanning folder %s for certificates for %s", dir, vhost)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		c.logger.Errorf("Unable to read directory %s - %s", dir, err.Error())

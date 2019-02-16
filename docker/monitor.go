@@ -104,9 +104,9 @@ func (c *ContainerMonitor) scheduleExpiry(name string) {
 	now := time.Now()
 	expiryTime := now.Add(c.deletionTime)
 	c.expiryTimes[name] = expiryTime
-	c.logger.Info("Scheduling expiry timer for %s", name)
+	c.logger.Infof("Scheduling expiry timer for %s", name)
 	if c.nextExpiry.Before(now) || c.nextExpiry.After(expiryTime) {
-		c.logger.Debug("Starting expiry timer with default duration")
+		c.logger.Debugf("Starting expiry timer with default duration")
 		c.expiryTimer.Reset(c.deletionTime + 1*time.Second)
 		c.nextExpiry = expiryTime
 	}
@@ -118,7 +118,7 @@ func (c *ContainerMonitor) publishExpiredContainers() {
 
 	for name, expiryTime := range c.expiryTimes {
 		if expiryTime.Before(now) {
-			c.logger.Info("Expiring %s", name)
+			c.logger.Infof("Expiring %s", name)
 			delete(c.expiryTimes, name)
 			c.goneContainerNames <- name
 		} else if next == 0 || expiryTime.Sub(now) < next {
