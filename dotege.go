@@ -48,7 +48,8 @@ func main() {
 
 	config := model.Config{
 		Labels: model.LabelConfig{
-			Hostnames: "com.chameth.vhost",
+			Hostnames:   "com.chameth.vhost",
+			RequireAuth: "com.chameth.auth",
 		},
 		DefaultCertActions:     model.COMBINE | model.FLATTEN,
 		DefaultCertDestination: "/data/certs/",
@@ -125,6 +126,11 @@ func getHostnames(containers map[string]model.Container, config model.Config) (h
 				}
 			}
 			addAlternatives(hostnames[names[0]], names[1:])
+
+			if label, ok = container.Labels[config.Labels.RequireAuth]; ok {
+				hostnames[names[0]].RequiresAuth = true
+				hostnames[names[0]].AuthGroup = label
+			}
 		}
 	}
 	return

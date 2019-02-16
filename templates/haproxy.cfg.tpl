@@ -26,8 +26,9 @@ frontend main
     use_backend {{ .Name | replace "." "_" }} if {hdr(host) -i {{ .Name }}
         {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end -}}
     }
-{{- end }}
-{{- range .Hostnames }}
+{{- end -}}
+
+{{ range .Hostnames }}
 
 backend {{ .Name | replace "." "_" }}
     mode http
@@ -35,5 +36,9 @@ backend {{ .Name | replace "." "_" }}
         {{- if index .Labels "com.chameth.proxy" }}
     server server1 {{ .Name }}:{{ index .Labels "com.chameth.proxy" }} check resolvers docker_resolver
         {{- end -}}
+    {{- end -}}
+    {{- if .RequiresAuth }}
+    acl authed_{{ .Name | replace "." "_" }} http_auth({{ .AuthGroup }})
+    http-request auth if !authed_{{ .Name | replace "." "_" }}
     {{- end -}}
 {{ end }}

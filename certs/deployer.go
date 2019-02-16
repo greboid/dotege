@@ -90,7 +90,7 @@ func (c *CertificateDeployer) deployFile(name string, content []byte, modTime ti
 	if err != nil {
 		c.logger.Warnf("Unable to write certificate %s - %s", target, err.Error())
 	} else {
-		c.logger.Info("Updated certificate file %s", target)
+		c.logger.Infof("Updated certificate file %s", target)
 	}
 }
 

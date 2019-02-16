@@ -24,7 +24,8 @@ type Container struct {
 
 // LabelConfig describes the labels used for various properties.
 type LabelConfig struct {
-	Hostnames string
+	Hostnames   string
+	RequireAuth string
 }
 
 // Hostname describes a DNS name used for proxying, retrieving certificates, etc.
@@ -34,6 +35,8 @@ type Hostname struct {
 	Containers      []Container
 	CertActions     CertActions
 	CertDestination string
+	RequiresAuth    bool
+	AuthGroup       string
 }
 
 // Config is the user-definable configuration for Dotege.
