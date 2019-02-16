@@ -52,6 +52,7 @@ type TemplateConfig struct {
 
 // FoundCertificate describes a certificate we've located on disk.
 type FoundCertificate struct {
+	Hostname   string
 	Cert       string
 	Chain      string
 	FullChain  string

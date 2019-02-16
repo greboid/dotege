@@ -61,6 +61,7 @@ func main() {
 
 	certMonitor := certs.NewCertificateManager(sugar, certChan)
 	certMonitor.AddDirectory("/data/certrequests/certs")
+	certDeployer := certs.NewCertificateDeployer(sugar, certChan)
 
 	templateGenerator := NewTemplateGenerator(sugar)
 	templateGenerator.AddTemplate(model.TemplateConfig{
@@ -89,10 +90,12 @@ func main() {
 				delete(containers, name)
 				timer.Reset(100 * time.Millisecond)
 			case <-timer.C:
+				hostnames := getHostnames(containers, config)
 				templateGenerator.Generate(Context{
 					Containers: containers,
-					Hostnames:  getHostnames(containers, config),
+					Hostnames:  hostnames,
 				})
+				certDeployer.UpdateHostnames(hostnames)
 			}
 		}
 	}()
