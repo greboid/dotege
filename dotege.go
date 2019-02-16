@@ -41,9 +41,11 @@ func main() {
 	sugar := logger.Sugar()
 	sugar.Info("Dotege is starting")
 
-	done := monitorSignals()
+	doneChan := monitorSignals()
 	containerChan := make(chan model.Container, 1)
 	expiryChan := make(chan string, 1)
+	certChan := make(chan model.FoundCertificate, 1)
+
 	config := model.Config{
 		Labels: model.LabelConfig{
 			Hostnames: "com.chameth.vhost",
@@ -57,7 +59,7 @@ func main() {
 		panic(err)
 	}
 
-	certMonitor := certs.NewCertificateManager(sugar)
+	certMonitor := certs.NewCertificateManager(sugar, certChan)
 	certMonitor.AddDirectory("/data/certrequests/certs")
 
 	templateGenerator := NewTemplateGenerator(sugar)
@@ -95,7 +97,7 @@ func main() {
 		}
 	}()
 
-	<-done
+	<-doneChan
 
 	err = cli.Close()
 	if err != nil {

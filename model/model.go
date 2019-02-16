@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 // CertActions define what will be done with a certificate
 type CertActions uint8
 
@@ -46,4 +48,13 @@ type Config struct {
 type TemplateConfig struct {
 	Source      string
 	Destination string
+}
+
+// FoundCertificate describes a certificate we've located on disk.
+type FoundCertificate struct {
+	Cert       string
+	Chain      string
+	FullChain  string
+	PrivateKey string
+	ModTime    time.Time
 }
