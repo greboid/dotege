@@ -26,6 +26,7 @@ func NewCertificateManager(logger *zap.SugaredLogger, channel chan<- model.Found
 
 // AddDirectory adds a new directory to monitor
 func (c *CertificateMonitor) AddDirectory(directory string) {
+	c.logger.Infof("Adding certificate directory %s", directory)
 	c.directories = append(c.directories, directory)
 	go c.scanForFolders(directory)
 }
@@ -57,9 +58,11 @@ func (c *CertificateMonitor) scanForCerts(vhost string, dir string) {
 	for _, f := range files {
 		ext := path.Ext(f.Name())
 		base := path.Base(f.Name())
+		c.logger.Debugf("File %s has extension %s, base name %s", f.Name(), ext, base)
 		if ext == "pem" {
 			prefix := strings.Split(base, "-")[0]
 			added := maybeAddPart(&cert, prefix, path.Join(dir, f.Name()))
+			c.logger.Debugf("\tFile prefix is %s, added status %s", prefix, added)
 			if added && f.ModTime().After(cert.ModTime) {
 				cert.ModTime = f.ModTime()
 			}

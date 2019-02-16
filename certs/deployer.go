@@ -44,7 +44,7 @@ func (c *CertificateDeployer) monitor() {
 func (c *CertificateDeployer) deployAll() {
 	select {
 	case <-c.deployChannel:
-		c.logger.Debug("Checking for certificates requiring deploySingle")
+		c.logger.Debug("Checking for certificates requiring deployment")
 		for _, hostname := range c.hostnames {
 			if cert, ok := c.certs[hostname.Name]; ok {
 				c.deploySingle(cert, hostname)
