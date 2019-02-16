@@ -12,6 +12,7 @@ import (
 type CertificateManager struct {
 	logger      *zap.SugaredLogger
 	directories []string
+	certs       map[string]*foundCertificate
 }
 
 type foundCertificate struct {
@@ -29,6 +30,7 @@ func NewCertificateManager(logger *zap.SugaredLogger) *CertificateManager {
 	}
 }
 
+// AddDirectory adds a new directory to monitor
 func (c *CertificateManager) AddDirectory(directory string) {
 	c.directories = append(c.directories, directory)
 	go c.scanForFolders(directory)
@@ -63,29 +65,35 @@ func (c *CertificateManager) scanForCerts(vhost string, dir string) {
 			switch parts := strings.Split(base, "-"); parts[0] {
 			case "cert":
 				cert.cert = path.Join(dir, f.Name())
-				if f.ModTime().After(cert.modTime) {
-					cert.modTime = f.ModTime()
-				}
 			case "chain":
 				cert.chain = path.Join(dir, f.Name())
-				if f.ModTime().After(cert.modTime) {
-					cert.modTime = f.ModTime()
-				}
 			case "fullchain":
 				cert.fullChain = path.Join(dir, f.Name())
-				if f.ModTime().After(cert.modTime) {
-					cert.modTime = f.ModTime()
-				}
 			case "privkey":
 				cert.privateKey = path.Join(dir, f.Name())
-				if f.ModTime().After(cert.modTime) {
-					cert.modTime = f.ModTime()
-				}
+			default:
+				continue
+			}
+
+			if f.ModTime().After(cert.modTime) {
+				cert.modTime = f.ModTime()
 			}
 		}
 	}
 
+	c.maybeAddCert(vhost, cert)
+}
+
+func (c *CertificateManager) maybeAddCert(vhost string, cert foundCertificate) {
 	if len(cert.cert) > 0 && len(cert.chain) > 0 && len(cert.fullChain) > 0 && len(cert.privateKey) > 0 {
-		c.logger.Debugf("Found certificate files for %s in %s", vhost, dir)
+		if existing, ok := c.certs[vhost]; ok {
+			if cert.modTime.After(existing.modTime) {
+				c.logger.Debugf("Found newer certificate files for %s in %s", vhost, path.Dir(cert.cert))
+				c.certs[vhost] = &cert
+			}
+		} else {
+			c.logger.Debugf("Found new certificate files for %s in %s", vhost, path.Dir(cert.cert))
+			c.certs[vhost] = &cert
+		}
 	}
 }

@@ -31,21 +31,25 @@ func monitorSignals() <-chan bool {
 }
 
 func main() {
-	config := zap.NewDevelopmentConfig()
-	config.DisableCaller = true
-	config.DisableStacktrace = true
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	config.OutputPaths = []string{"stdout"}
-	config.ErrorOutputPaths = []string{"stdout"}
-	logger, _ := config.Build()
+	zapConfig := zap.NewDevelopmentConfig()
+	zapConfig.DisableCaller = true
+	zapConfig.DisableStacktrace = true
+	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapConfig.OutputPaths = []string{"stdout"}
+	zapConfig.ErrorOutputPaths = []string{"stdout"}
+	logger, _ := zapConfig.Build()
 	sugar := logger.Sugar()
 	sugar.Info("Dotege is starting")
 
 	done := monitorSignals()
 	containerChan := make(chan model.Container, 1)
 	expiryChan := make(chan string, 1)
-	labelConfig := model.LabelConfig{
-		Hostnames: "com.chameth.vhost",
+	config := model.Config{
+		Labels: model.LabelConfig{
+			Hostnames: "com.chameth.vhost",
+		},
+		DefaultCertActions:     model.COMBINE | model.FLATTEN,
+		DefaultCertDestination: "/data/certs/",
 	}
 
 	cli, err := client.NewEnvClient()
@@ -54,12 +58,12 @@ func main() {
 	}
 
 	certMonitor := certs.NewCertificateManager(sugar)
-	certMonitor.AddDirectory("/certs/certs")
+	certMonitor.AddDirectory("/data/certrequests/certs")
 
 	templateGenerator := NewTemplateGenerator(sugar)
 	templateGenerator.AddTemplate(model.TemplateConfig{
 		Source:      "./templates/domains.txt.tpl",
-		Destination: "domains.txt",
+		Destination: "/data/certrequests/domains.txt",
 	})
 	templateGenerator.AddTemplate(model.TemplateConfig{
 		Source:      "./templates/haproxy.cfg.tpl",
@@ -85,7 +89,7 @@ func main() {
 			case <-timer.C:
 				templateGenerator.Generate(Context{
 					Containers: containers,
-					Hostnames:  getHostnames(containers, labelConfig),
+					Hostnames:  getHostnames(containers, config),
 				})
 			}
 		}
@@ -99,18 +103,20 @@ func main() {
 	}
 }
 
-func getHostnames(containers map[string]model.Container, config model.LabelConfig) (hostnames map[string]*model.Hostname) {
+func getHostnames(containers map[string]model.Container, config model.Config) (hostnames map[string]*model.Hostname) {
 	hostnames = make(map[string]*model.Hostname)
 	for _, container := range containers {
-		if label, ok := container.Labels[config.Hostnames]; ok {
+		if label, ok := container.Labels[config.Labels.Hostnames]; ok {
 			names := strings.Split(strings.Replace(label, ",", " ", -1), " ")
 			if hostname, ok := hostnames[names[0]]; ok {
 				hostname.Containers = append(hostname.Containers, container)
 			} else {
 				hostnames[names[0]] = &model.Hostname{
-					Name:         names[0],
-					Alternatives: make(map[string]bool),
-					Containers:   []model.Container{container},
+					Name:            names[0],
+					Alternatives:    make(map[string]bool),
+					Containers:      []model.Container{container},
+					CertActions:     config.DefaultCertActions,
+					CertDestination: config.DefaultCertDestination,
 				}
 			}
 			addAlternatives(hostnames[names[0]], names[1:])
