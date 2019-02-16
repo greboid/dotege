@@ -48,14 +48,16 @@ func (c *CertificateMonitor) scanForFolders(dir string) {
 }
 
 func (c *CertificateMonitor) scanForCerts(vhost string, dir string) {
-	c.logger.Debugf("Scanning folder %s for certificates for %s", dir, vhost)
+	c.logger.Debugf("Scanning folder %s for certificates", dir)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		c.logger.Errorf("Unable to read directory %s - %s", dir, err.Error())
 		return
 	}
 
-	cert := model.FoundCertificate{}
+	cert := model.FoundCertificate{
+		Hostname: vhost,
+	}
 	for _, f := range files {
 		ext := path.Ext(f.Name())
 		base := path.Base(f.Name())

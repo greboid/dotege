@@ -51,6 +51,8 @@ func (c *CertificateDeployer) deployAll() {
 			for _, hostname := range c.hostnames {
 				if cert, ok := c.certs[hostname.Name]; ok {
 					c.deploySingle(cert, hostname)
+				} else {
+					c.logger.Warnf("No certificate found for %s", hostname.Name)
 				}
 			}
 		}
