@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/csmith/dotege/certs"
-	"github.com/csmith/dotege/docker"
 	"github.com/csmith/dotege/model"
 	"github.com/docker/docker/client"
+	"github.com/xenolf/lego/certcrypto"
+	"github.com/xenolf/lego/lego"
+	"github.com/xenolf/lego/platform/config/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -42,9 +43,6 @@ func main() {
 	sugar.Info("Dotege is starting")
 
 	doneChan := monitorSignals()
-	containerChan := make(chan model.Container, 1)
-	expiryChan := make(chan string, 1)
-	certChan := make(chan model.FoundCertificate, 1)
 
 	config := model.Config{
 		Labels: model.LabelConfig{
@@ -55,57 +53,67 @@ func main() {
 		DefaultCertDestination: "/data/certs/",
 	}
 
-	cli, err := client.NewEnvClient()
+	dockerStopChan := make(chan struct{})
+	dockerClient, err := client.NewEnvClient()
 	if err != nil {
 		panic(err)
 	}
 
-	certMonitor := certs.NewCertificateManager(sugar, certChan)
-	certMonitor.AddDirectory("/data/certrequests/certs/")
-	certDeployer := certs.NewCertificateDeployer(sugar, certChan)
-
 	templateGenerator := NewTemplateGenerator(sugar)
-	templateGenerator.AddTemplate(model.TemplateConfig{
-		Source:      "./templates/domains.txt.tpl",
-		Destination: "/data/certrequests/domains.txt",
-	})
 	templateGenerator.AddTemplate(model.TemplateConfig{
 		Source:      "./templates/haproxy.cfg.tpl",
 		Destination: "haproxy.cfg",
 	})
 
-	monitor := docker.NewContainerMonitor(sugar, cli, containerChan, expiryChan)
-	go monitor.Monitor()
+	certificateManager := NewCertificateManager(sugar, lego.LEDirectoryStaging, certcrypto.EC256, env.GetOrDefaultString("DOTEGE_DNS_PROVIDER", ""), "/config/certs.json")
+
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	containers := make(map[string]model.Container)
 
 	go func() {
-		containers := make(map[string]model.Container)
-		timer := time.NewTimer(time.Hour)
-		timer.Stop()
+		err := monitorContainers(dockerClient, dockerStopChan, func(container model.Container) {
+			containers[container.Name] = container
+			timer.Reset(100 * time.Millisecond)
+			err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, config))
+		}, func(name string) {
+			delete(containers, name)
+			timer.Reset(100 * time.Millisecond)
+		})
 
+		if err != nil {
+			sugar.Fatal("Error monitoring containers: ", err.Error())
+		}
+	}()
+
+	go func() {
 		for {
 			select {
-			case container := <-containerChan:
-				containers[container.Name] = container
-				timer.Reset(100 * time.Millisecond)
-			case name := <-expiryChan:
-				delete(containers, name)
-				timer.Reset(100 * time.Millisecond)
 			case <-timer.C:
 				hostnames := getHostnames(containers, config)
 				templateGenerator.Generate(Context{
 					Containers: containers,
 					Hostnames:  hostnames,
 				})
-				certDeployer.UpdateHostnames(hostnames)
+				//certDeployer.UpdateHostnames(hostnames)
 			}
 		}
 	}()
 
 	<-doneChan
 
-	err = cli.Close()
+	dockerStopChan <- struct{}{}
+	err = dockerClient.Close()
 	if err != nil {
 		panic(err)
+	}
+}
+
+func getHostnamesForContainer(container model.Container, config model.Config) []string {
+	if label, ok := container.Labels[config.Labels.Hostnames]; ok {
+		return strings.Split(strings.Replace(label, ",", " ", -1), " ")
+	} else {
+		return []string{}
 	}
 }
 
