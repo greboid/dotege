@@ -66,6 +66,10 @@ func main() {
 	})
 
 	certificateManager := NewCertificateManager(sugar, lego.LEDirectoryStaging, certcrypto.EC256, env.GetOrDefaultString("DOTEGE_DNS_PROVIDER", ""), "/config/certs.json")
+	err = certificateManager.Init(env.GetOrDefaultString("DOTEGE_ACME_EMAIL", ""))
+	if err != nil {
+		panic(err)
+	}
 
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()
