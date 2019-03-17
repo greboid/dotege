@@ -184,8 +184,12 @@ func (c *CertificateManager) register() error {
 func (c *CertificateManager) GetCertificate(domains []string) (error, *SavedCertificate) {
 	existing := c.loadCert(domains)
 	if existing != nil {
-		c.logger.Debugf("Returning existing certificate for request %s", domains)
-		return nil, existing
+		if existing.NotAfter.Before(time.Now().Add(time.Hour * 24 * 31)) {
+			c.logger.Debugf("Found existing certificate for %s, but it expires soon; renewing", domains)
+		} else {
+			c.logger.Debugf("Returning existing certificate for request %s", domains)
+			return nil, existing
+		}
 	}
 
 	request := certificate.ObtainRequest{
@@ -226,7 +230,25 @@ func domainsMatch(domains1, domains2 []string) bool {
 	return true
 }
 
+func (c *CertificateManager) removeCerts(domains []string) {
+	var newCerts []*SavedCertificate
+	for _, cert := range c.data.Certs {
+		if !domainsMatch(cert.Domains, domains) {
+			newCerts = append(newCerts, cert)
+		}
+	}
+
+	diff := len(c.data.Certs) - len(newCerts)
+
+	if diff > 0 {
+		c.logger.Debugf("Removed %d certificates matching %s", diff, domains)
+		c.data.Certs = newCerts
+	}
+}
+
 func (c *CertificateManager) saveCert(domains []string, cert *certificate.Resource) (error, *SavedCertificate) {
+	c.removeCerts(domains)
+
 	savedCert := &SavedCertificate{
 		Domains:           domains,
 		Certificate:       cert.Certificate,

@@ -31,7 +31,7 @@ func monitorSignals() <-chan bool {
 	return done
 }
 
-func main() {
+func createLogger() *zap.SugaredLogger {
 	zapConfig := zap.NewDevelopmentConfig()
 	zapConfig.DisableCaller = true
 	zapConfig.DisableStacktrace = true
@@ -39,12 +39,17 @@ func main() {
 	zapConfig.OutputPaths = []string{"stdout"}
 	zapConfig.ErrorOutputPaths = []string{"stdout"}
 	logger, _ := zapConfig.Build()
-	sugar := logger.Sugar()
-	sugar.Info("Dotege is starting")
+	return logger.Sugar()
+}
 
-	doneChan := monitorSignals()
-
-	config := model.Config{
+func createConfig() *model.Config {
+	return &model.Config{
+		Templates: []model.TemplateConfig{
+			{
+				Source:      "./templates/haproxy.cfg.tpl",
+				Destination: "haproxy.cfg",
+			},
+		},
 		Labels: model.LabelConfig{
 			Hostnames:   "com.chameth.vhost",
 			RequireAuth: "com.chameth.auth",
@@ -52,6 +57,31 @@ func main() {
 		DefaultCertActions:     model.COMBINE | model.FLATTEN,
 		DefaultCertDestination: "/data/certs/",
 	}
+}
+
+func createTemplateGenerator(logger *zap.SugaredLogger, config *model.Config) *TemplateGenerator {
+	templateGenerator := NewTemplateGenerator(logger)
+	for _, template := range config.Templates {
+		templateGenerator.AddTemplate(template)
+	}
+	return templateGenerator
+}
+
+func createCertificateManager(logger *zap.SugaredLogger) *CertificateManager {
+	certificateManager := NewCertificateManager(logger, lego.LEDirectoryStaging, certcrypto.EC256, env.GetOrDefaultString("DOTEGE_DNS_PROVIDER", ""), "/config/certs.json")
+	err := certificateManager.Init(env.GetOrDefaultString("DOTEGE_ACME_EMAIL", ""))
+	if err != nil {
+		panic(err)
+	}
+	return certificateManager
+}
+
+func main() {
+	logger := createLogger()
+	logger.Info("Dotege is starting")
+
+	doneChan := monitorSignals()
+	config := createConfig()
 
 	dockerStopChan := make(chan struct{})
 	dockerClient, err := client.NewEnvClient()
@@ -59,47 +89,42 @@ func main() {
 		panic(err)
 	}
 
-	templateGenerator := NewTemplateGenerator(sugar)
-	templateGenerator.AddTemplate(model.TemplateConfig{
-		Source:      "./templates/haproxy.cfg.tpl",
-		Destination: "haproxy.cfg",
-	})
+	templateGenerator := createTemplateGenerator(logger, config)
+	certificateManager := createCertificateManager(logger)
 
-	certificateManager := NewCertificateManager(sugar, lego.LEDirectoryStaging, certcrypto.EC256, env.GetOrDefaultString("DOTEGE_DNS_PROVIDER", ""), "/config/certs.json")
-	err = certificateManager.Init(env.GetOrDefaultString("DOTEGE_ACME_EMAIL", ""))
-	if err != nil {
-		panic(err)
-	}
-
-	timer := time.NewTimer(time.Hour)
-	timer.Stop()
+	jitterTimer := time.NewTimer(time.Minute)
+	redeployTimer := time.NewTicker(time.Hour * 24)
 	containers := make(map[string]model.Container)
 
 	go func() {
 		err := monitorContainers(dockerClient, dockerStopChan, func(container model.Container) {
 			containers[container.Name] = container
-			timer.Reset(100 * time.Millisecond)
-			err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, config))
+			jitterTimer.Reset(100 * time.Millisecond)
+			err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, *config))
 		}, func(name string) {
 			delete(containers, name)
-			timer.Reset(100 * time.Millisecond)
+			jitterTimer.Reset(100 * time.Millisecond)
 		})
 
 		if err != nil {
-			sugar.Fatal("Error monitoring containers: ", err.Error())
+			logger.Fatal("Error monitoring containers: ", err.Error())
 		}
 	}()
 
 	go func() {
 		for {
 			select {
-			case <-timer.C:
-				hostnames := getHostnames(containers, config)
+			case <-jitterTimer.C:
+				hostnames := getHostnames(containers, *config)
 				templateGenerator.Generate(Context{
 					Containers: containers,
 					Hostnames:  hostnames,
 				})
-				//certDeployer.UpdateHostnames(hostnames)
+			case <-redeployTimer.C:
+				logger.Info("Performing periodic certificate refresh")
+				for _, container := range containers {
+					err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, *config))
+				}
 			}
 		}
 	}()
