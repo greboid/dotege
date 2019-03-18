@@ -6,7 +6,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/xenolf/lego/certcrypto"
 	"github.com/xenolf/lego/lego"
-	"github.com/xenolf/lego/platform/config/env"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -54,22 +53,29 @@ func createConfig() *model.Config {
 			Hostnames:   "com.chameth.vhost",
 			RequireAuth: "com.chameth.auth",
 		},
+		Acme: model.AcmeConfig{
+			DnsProvider:   "httpreq",
+			Email:         "dotege.test@chameth.com",
+			Endpoint:      lego.LEDirectoryStaging,
+			KeyType:       certcrypto.EC256,
+			CacheLocation: "/config/certs.json",
+		},
 		DefaultCertActions:     model.COMBINE | model.FLATTEN,
 		DefaultCertDestination: "/data/certs/",
 	}
 }
 
-func createTemplateGenerator(logger *zap.SugaredLogger, config *model.Config) *TemplateGenerator {
+func createTemplateGenerator(logger *zap.SugaredLogger, templates []model.TemplateConfig) *TemplateGenerator {
 	templateGenerator := NewTemplateGenerator(logger)
-	for _, template := range config.Templates {
+	for _, template := range templates {
 		templateGenerator.AddTemplate(template)
 	}
 	return templateGenerator
 }
 
-func createCertificateManager(logger *zap.SugaredLogger) *CertificateManager {
-	certificateManager := NewCertificateManager(logger, lego.LEDirectoryStaging, certcrypto.EC256, env.GetOrDefaultString("DOTEGE_DNS_PROVIDER", ""), "/config/certs.json")
-	err := certificateManager.Init(env.GetOrDefaultString("DOTEGE_ACME_EMAIL", ""))
+func createCertificateManager(logger *zap.SugaredLogger, config model.AcmeConfig) *CertificateManager {
+	certificateManager := NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
+	err := certificateManager.Init(config.Email)
 	if err != nil {
 		panic(err)
 	}
@@ -89,8 +95,8 @@ func main() {
 		panic(err)
 	}
 
-	templateGenerator := createTemplateGenerator(logger, config)
-	certificateManager := createCertificateManager(logger)
+	templateGenerator := createTemplateGenerator(logger, config.Templates)
+	certificateManager := createCertificateManager(logger, config.Acme)
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)

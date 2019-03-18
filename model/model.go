@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"github.com/xenolf/lego/certcrypto"
+	"time"
+)
 
 // CertActions define what will be done with a certificate
 type CertActions uint8
@@ -28,6 +31,15 @@ type LabelConfig struct {
 	RequireAuth string
 }
 
+// AcmeConfig describes the configuration to use for getting certs using ACME.
+type AcmeConfig struct {
+	Email         string
+	DnsProvider   string
+	Endpoint      string
+	KeyType       certcrypto.KeyType
+	CacheLocation string
+}
+
 // Hostname describes a DNS name used for proxying, retrieving certificates, etc.
 type Hostname struct {
 	Name            string
@@ -45,6 +57,7 @@ type Config struct {
 	Labels                 LabelConfig
 	DefaultCertActions     CertActions
 	DefaultCertDestination string
+	Acme                   AcmeConfig
 }
 
 // TemplateConfig configures a single template for the generator.
