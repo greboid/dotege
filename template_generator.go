@@ -11,7 +11,7 @@ import (
 )
 
 type Context struct {
-	Containers map[string]model.Container
+	Containers map[string]*model.Container
 	Hostnames  map[string]*model.Hostname
 }
 

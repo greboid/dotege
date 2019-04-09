@@ -44,7 +44,7 @@ type AcmeConfig struct {
 type Hostname struct {
 	Name            string
 	Alternatives    map[string]bool
-	Containers      []Container
+	Containers      []*Container
 	CertActions     CertActions
 	CertDestination string
 	RequiresAuth    bool

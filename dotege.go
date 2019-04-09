@@ -8,8 +8,10 @@ import (
 	"github.com/xenolf/lego/lego"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io/ioutil"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -29,6 +31,12 @@ const (
 	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
 	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
 	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
+)
+
+var (
+	logger             *zap.SugaredLogger
+	certificateManager *CertificateManager
+	config             *model.Config
 )
 
 func requiredVar(key string) (value string) {
@@ -73,8 +81,8 @@ func createLogger() *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func createConfig() *model.Config {
-	return &model.Config{
+func createConfig() {
+	config = &model.Config{
 		Templates: []model.TemplateConfig{
 			{
 				Source:      optionalVar(envTemplateSourceKey, envTemplateSourceDefault),
@@ -97,7 +105,7 @@ func createConfig() *model.Config {
 	}
 }
 
-func createTemplateGenerator(logger *zap.SugaredLogger, templates []model.TemplateConfig) *TemplateGenerator {
+func createTemplateGenerator(templates []model.TemplateConfig) *TemplateGenerator {
 	templateGenerator := NewTemplateGenerator(logger)
 	for _, template := range templates {
 		templateGenerator.AddTemplate(template)
@@ -105,21 +113,20 @@ func createTemplateGenerator(logger *zap.SugaredLogger, templates []model.Templa
 	return templateGenerator
 }
 
-func createCertificateManager(logger *zap.SugaredLogger, config model.AcmeConfig) *CertificateManager {
-	certificateManager := NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
+func createCertificateManager(config model.AcmeConfig) {
+	certificateManager = NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
 	err := certificateManager.Init(config.Email)
 	if err != nil {
 		panic(err)
 	}
-	return certificateManager
 }
 
 func main() {
-	logger := createLogger()
+	logger = createLogger()
 	logger.Info("Dotege is starting")
 
 	doneChan := monitorSignals()
-	config := createConfig()
+	createConfig()
 
 	dockerStopChan := make(chan struct{})
 	dockerClient, err := client.NewEnvClient()
@@ -127,18 +134,18 @@ func main() {
 		panic(err)
 	}
 
-	templateGenerator := createTemplateGenerator(logger, config.Templates)
-	certificateManager := createCertificateManager(logger, config.Acme)
+	templateGenerator := createTemplateGenerator(config.Templates)
+	createCertificateManager(config.Acme)
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
-	containers := make(map[string]model.Container)
+	containers := make(map[string]*model.Container)
 
 	go func() {
-		err := monitorContainers(dockerClient, dockerStopChan, func(container model.Container) {
+		err := monitorContainers(dockerClient, dockerStopChan, func(container *model.Container) {
 			containers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
-			err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, *config))
+			deployCertForContainer(container)
 		}, func(name string) {
 			delete(containers, name)
 			jitterTimer.Reset(100 * time.Millisecond)
@@ -161,7 +168,7 @@ func main() {
 			case <-redeployTimer.C:
 				logger.Info("Performing periodic certificate refresh")
 				for _, container := range containers {
-					err, _ = certificateManager.GetCertificate(getHostnamesForContainer(container, *config))
+					deployCertForContainer(container)
 				}
 			}
 		}
@@ -176,7 +183,7 @@ func main() {
 	}
 }
 
-func getHostnamesForContainer(container model.Container, config model.Config) []string {
+func getHostnamesForContainer(container *model.Container) []string {
 	if label, ok := container.Labels[config.Labels.Hostnames]; ok {
 		return strings.Split(strings.Replace(label, ",", " ", -1), " ")
 	} else {
@@ -184,7 +191,7 @@ func getHostnamesForContainer(container model.Container, config model.Config) []
 	}
 }
 
-func getHostnames(containers map[string]model.Container, config model.Config) (hostnames map[string]*model.Hostname) {
+func getHostnames(containers map[string]*model.Container, config model.Config) (hostnames map[string]*model.Hostname) {
 	hostnames = make(map[string]*model.Hostname)
 	for _, container := range containers {
 		if label, ok := container.Labels[config.Labels.Hostnames]; ok {
@@ -195,7 +202,7 @@ func getHostnames(containers map[string]model.Container, config model.Config) (h
 				hostnames[names[0]] = &model.Hostname{
 					Name:            names[0],
 					Alternatives:    make(map[string]bool),
-					Containers:      []model.Container{container},
+					Containers:      []*model.Container{container},
 					CertActions:     config.DefaultCertActions,
 					CertDestination: config.DefaultCertDestination,
 				}
@@ -214,5 +221,25 @@ func getHostnames(containers map[string]model.Container, config model.Config) (h
 func addAlternatives(hostname *model.Hostname, alternatives []string) {
 	for _, alternative := range alternatives {
 		hostname.Alternatives[alternative] = true
+	}
+}
+
+func deployCertForContainer(container *model.Container) {
+	err, cert := certificateManager.GetCertificate(getHostnamesForContainer(container))
+	if err != nil {
+		logger.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
+	} else {
+		deployCert(cert)
+	}
+}
+
+func deployCert(certificate *SavedCertificate) {
+	target := path.Join(config.DefaultCertDestination, fmt.Sprintf("%s.pem", certificate.Domains[0]))
+
+	err := ioutil.WriteFile(target, append(certificate.Certificate, certificate.PrivateKey...), 0700)
+	if err != nil {
+		logger.Warnf("Unable to write certificate %s - %s", target, err.Error())
+	} else {
+		logger.Infof("Updated certificate file %s", target)
 	}
 }

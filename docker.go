@@ -15,7 +15,7 @@ type DockerClient interface {
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 }
 
-func monitorContainers(client DockerClient, stop <-chan struct{}, addedFn func(model.Container), removedFn func(string)) error {
+func monitorContainers(client DockerClient, stop <-chan struct{}, addedFn func(*model.Container), removedFn func(string)) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	stream, errors := startEventStream(client, ctx)
 
@@ -33,7 +33,7 @@ func monitorContainers(client DockerClient, stop <-chan struct{}, addedFn func(m
 					cancel()
 					return err
 				}
-				addedFn(container)
+				addedFn(&container)
 			} else {
 				removedFn(event.Actor.Attributes["name"])
 			}
@@ -57,14 +57,14 @@ func startEventStream(client DockerClient, ctx context.Context) (<-chan events.M
 	return client.Events(ctx, types.EventsOptions{Filters: args})
 }
 
-func publishExistingContainers(client DockerClient, ctx context.Context, addedFn func(model.Container)) error {
+func publishExistingContainers(client DockerClient, ctx context.Context, addedFn func(*model.Container)) error {
 	containers, err := client.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to list containers: %s", err.Error())
 	}
 
 	for _, container := range containers {
-		addedFn(model.Container{
+		addedFn(&model.Container{
 			Id:     container.ID,
 			Name:   container.Names[0][1:],
 			Labels: container.Labels,
