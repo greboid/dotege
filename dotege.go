@@ -15,6 +15,38 @@ import (
 	"time"
 )
 
+const (
+	envCertDestinationKey         = "DOTEGE_CERT_DESTINATION"
+	envCertDestinationDefault     = "/data/certs/"
+	envDnsProviderKey             = "DOTEGE_DNS_PROVIDER"
+	envAcmeEmailKey               = "DOTEGE_ACME_EMAIL"
+	envAcmeEndpointKey            = "DOTEGE_ACME_ENDPOINT"
+	envAcmeKeyTypeKey             = "DOTEGE_ACME_KEY_TYPE"
+	envAcmeKeyTypeDefault         = "P384"
+	envAcmeCacheLocationKey       = "DOTEGE_ACME_CACHE_FILE"
+	envAcmeCacheLocationDefault   = "/data/config/certs.json"
+	envTemplateDestinationKey     = "DOTEGE_TEMPLATE_DESTINATION"
+	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
+	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
+	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
+)
+
+func requiredVar(key string) (value string) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		panic(fmt.Errorf("required environmental variable not defined: %s", key))
+	}
+	return
+}
+
+func optionalVar(key string, fallback string) (value string) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		value = fallback
+	}
+	return
+}
+
 func monitorSignals() <-chan bool {
 	signals := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -45,8 +77,8 @@ func createConfig() *model.Config {
 	return &model.Config{
 		Templates: []model.TemplateConfig{
 			{
-				Source:      "./templates/haproxy.cfg.tpl",
-				Destination: "haproxy.cfg",
+				Source:      optionalVar(envTemplateSourceKey, envTemplateSourceDefault),
+				Destination: optionalVar(envTemplateDestinationKey, envTemplateDestinationDefault),
 			},
 		},
 		Labels: model.LabelConfig{
@@ -54,14 +86,14 @@ func createConfig() *model.Config {
 			RequireAuth: "com.chameth.auth",
 		},
 		Acme: model.AcmeConfig{
-			DnsProvider:   "httpreq",
-			Email:         "dotege.test@chameth.com",
-			Endpoint:      lego.LEDirectoryStaging,
-			KeyType:       certcrypto.EC256,
-			CacheLocation: "/config/certs.json",
+			DnsProvider:   requiredVar(envDnsProviderKey),
+			Email:         requiredVar(envAcmeEmailKey),
+			Endpoint:      optionalVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
+			KeyType:       certcrypto.KeyType(optionalVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
+			CacheLocation: optionalVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
 		},
 		DefaultCertActions:     model.COMBINE | model.FLATTEN,
-		DefaultCertDestination: "/data/certs/",
+		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
 	}
 }
 
