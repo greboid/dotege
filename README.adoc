@@ -38,6 +38,13 @@ values are:
 +
 The default value is `P384`.
 
+`DOTEGE_SIGNAL_CONTAINER`::
+The name of a container that should be sent a signal when the template or certificates
+are changed. No signal is sent if not specified.
+
+`DOTEGE_SIGNAL_TYPE`::
+The type of signal to send to the `DOTEGE_SIGNAL_CONTAINER`. Defaults to `HUP`.
+
 `DOTEGE_TEMPLATE_DESTINATION`::
 Location to write the templated configuration file to. Defaults to `/data/output/haproxy.cfg`.
 

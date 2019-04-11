@@ -54,6 +54,7 @@ type Hostname struct {
 // Config is the user-definable configuration for Dotege.
 type Config struct {
 	Templates              []TemplateConfig
+	Signals                []ContainerSignal
 	Labels                 LabelConfig
 	DefaultCertActions     CertActions
 	DefaultCertDestination string
@@ -64,6 +65,12 @@ type Config struct {
 type TemplateConfig struct {
 	Source      string
 	Destination string
+}
+
+// ContainerSignal describes a container that should be sent a signal when the config/certs change.
+type ContainerSignal struct {
+	Name   string
+	Signal string
 }
 
 // FoundCertificate describes a certificate we've located on disk.

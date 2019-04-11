@@ -58,7 +58,7 @@ func (t *TemplateGenerator) AddTemplate(config model.TemplateConfig) {
 	})
 }
 
-func (t *TemplateGenerator) Generate(context Context) {
+func (t *TemplateGenerator) Generate(context Context) (updated bool) {
 	for _, tmpl := range t.templates {
 		t.logger.Debugf("Checking for updates to %s", tmpl.config.Source)
 		builder := &strings.Builder{}
@@ -67,6 +67,7 @@ func (t *TemplateGenerator) Generate(context Context) {
 			panic(err)
 		}
 		if tmpl.content != builder.String() {
+			updated = true
 			t.logger.Infof("Writing updated template to %s", tmpl.config.Destination)
 			tmpl.content = builder.String()
 			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
@@ -75,4 +76,5 @@ func (t *TemplateGenerator) Generate(context Context) {
 			}
 		}
 	}
+	return
 }

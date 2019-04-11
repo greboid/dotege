@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/csmith/dotege/model"
 	"github.com/docker/docker/client"
@@ -27,6 +28,10 @@ const (
 	envAcmeKeyTypeDefault         = "P384"
 	envAcmeCacheLocationKey       = "DOTEGE_ACME_CACHE_FILE"
 	envAcmeCacheLocationDefault   = "/data/config/certs.json"
+	envSignalContainerKey         = "DOTEGE_SIGNAL_CONTAINER"
+	envSignalContainerDefault     = ""
+	envSignalTypeKey              = "DOTEGE_SIGNAL_TYPE"
+	envSignalTypeDefault          = "HUP"
 	envTemplateDestinationKey     = "DOTEGE_TEMPLATE_DESTINATION"
 	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
 	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
@@ -37,6 +42,8 @@ var (
 	logger             *zap.SugaredLogger
 	certificateManager *CertificateManager
 	config             *model.Config
+	dockerClient       *client.Client
+	containers         = make(map[string]*model.Container)
 )
 
 func requiredVar(key string) (value string) {
@@ -81,6 +88,20 @@ func createLogger() *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
+func createSignalConfig() []model.ContainerSignal {
+	name := optionalVar(envSignalContainerKey, envSignalContainerDefault)
+	if name == envSignalContainerDefault {
+		return []model.ContainerSignal{}
+	} else {
+		return []model.ContainerSignal{
+			{
+				Name:   name,
+				Signal: optionalVar(envSignalTypeKey, envSignalTypeDefault),
+			},
+		}
+	}
+}
+
 func createConfig() {
 	config = &model.Config{
 		Templates: []model.TemplateConfig{
@@ -100,6 +121,7 @@ func createConfig() {
 			KeyType:       certcrypto.KeyType(optionalVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
 			CacheLocation: optionalVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
 		},
+		Signals:                createSignalConfig(),
 		DefaultCertActions:     model.COMBINE | model.FLATTEN,
 		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
 	}
@@ -139,13 +161,13 @@ func main() {
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
-	containers := make(map[string]*model.Container)
 
 	go func() {
 		err := monitorContainers(dockerClient, dockerStopChan, func(container *model.Container) {
 			containers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
 			deployCertForContainer(container)
+			signalContainer()
 		}, func(name string) {
 			delete(containers, name)
 			jitterTimer.Reset(100 * time.Millisecond)
@@ -161,14 +183,18 @@ func main() {
 			select {
 			case <-jitterTimer.C:
 				hostnames := getHostnames(containers, *config)
-				templateGenerator.Generate(Context{
+				updated := templateGenerator.Generate(Context{
 					Containers: containers,
 					Hostnames:  hostnames,
 				})
+				if updated {
+					signalContainer()
+				}
 			case <-redeployTimer.C:
 				logger.Info("Performing periodic certificate refresh")
 				for _, container := range containers {
 					deployCertForContainer(container)
+					signalContainer()
 				}
 			}
 		}
@@ -180,6 +206,20 @@ func main() {
 	err = dockerClient.Close()
 	if err != nil {
 		panic(err)
+	}
+}
+
+func signalContainer() {
+	for _, s := range config.Signals {
+		container, ok := containers[s.Name]
+		if ok {
+			err := dockerClient.ContainerKill(context.Background(), container.Id, s.Signal)
+			if err != nil {
+				logger.Errorf("Unable to send signal %s to container %s: %s", s.Signal, s.Name, err.Error())
+			}
+		} else {
+			logger.Warnf("Couldn't signal container %s as it is not running", s.Name)
+		}
 	}
 }
 
