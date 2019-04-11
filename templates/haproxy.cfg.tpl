@@ -21,9 +21,10 @@ frontend main
     mode    http
     bind    :443 ssl strict-sni alpn h2,http/1.1 crt /certs/
     bind    :80
+    http-request set-header X-Forwarded-For %[src]
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
     redirect scheme https code 301 if !{ ssl_fc }
     http-response set-header Strict-Transport-Security max-age=15768000
-    http-request set-header X-Forwarded-Proto https if { ssl_fc }
 {{- range .Hostnames }}
     use_backend {{ .Name | replace "." "_" }} if { hdr(host) -i {{ .Name }}
         {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end }} }
