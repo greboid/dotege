@@ -225,7 +225,13 @@ func addAlternatives(hostname *model.Hostname, alternatives []string) {
 }
 
 func deployCertForContainer(container *model.Container) {
-	err, cert := certificateManager.GetCertificate(getHostnamesForContainer(container))
+	hostnames := getHostnamesForContainer(container)
+	if len(hostnames) == 0 {
+		logger.Debugf("No labels found for container %s", container.Name)
+		return
+	}
+
+	err, cert := certificateManager.GetCertificate(hostnames)
 	if err != nil {
 		logger.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 	} else {
