@@ -197,7 +197,6 @@ func main() {
 					delete(updatedContainers, name)
 				}
 
-				signalContainer()
 				if updated {
 					signalContainer()
 				}
