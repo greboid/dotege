@@ -150,8 +150,9 @@ func main() {
 	doneChan := monitorSignals()
 	createConfig()
 
+	var err error
 	dockerStopChan := make(chan struct{})
-	dockerClient, err := client.NewEnvClient()
+	dockerClient, err = client.NewEnvClient()
 	if err != nil {
 		panic(err)
 	}
@@ -161,14 +162,15 @@ func main() {
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
+	updatedContainers := make(map[string]*model.Container)
 
 	go func() {
 		err := monitorContainers(dockerClient, dockerStopChan, func(container *model.Container) {
 			containers[container.Name] = container
+			updatedContainers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
-			deployCertForContainer(container)
-			signalContainer()
 		}, func(name string) {
+			delete(updatedContainers, name)
 			delete(containers, name)
 			jitterTimer.Reset(100 * time.Millisecond)
 		})
@@ -187,6 +189,13 @@ func main() {
 					Containers: containers,
 					Hostnames:  hostnames,
 				})
+
+				for name, container := range updatedContainers {
+					updated = updated || deployCertForContainer(container)
+					delete(updatedContainers, name)
+				}
+
+				signalContainer()
 				if updated {
 					signalContainer()
 				}
@@ -264,28 +273,32 @@ func addAlternatives(hostname *model.Hostname, alternatives []string) {
 	}
 }
 
-func deployCertForContainer(container *model.Container) {
+func deployCertForContainer(container *model.Container) bool {
 	hostnames := getHostnamesForContainer(container)
 	if len(hostnames) == 0 {
 		logger.Debugf("No labels found for container %s", container.Name)
-		return
+		return false
 	}
 
 	err, cert := certificateManager.GetCertificate(hostnames)
 	if err != nil {
 		logger.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
+		return false
 	} else {
-		deployCert(cert)
+		return deployCert(cert)
 	}
 }
 
-func deployCert(certificate *SavedCertificate) {
+func deployCert(certificate *SavedCertificate) bool {
 	target := path.Join(config.DefaultCertDestination, fmt.Sprintf("%s.pem", certificate.Domains[0]))
 
+	// TODO: Check if the cert is different
 	err := ioutil.WriteFile(target, append(certificate.Certificate, certificate.PrivateKey...), 0700)
 	if err != nil {
 		logger.Warnf("Unable to write certificate %s - %s", target, err.Error())
+		return false
 	} else {
 		logger.Infof("Updated certificate file %s", target)
+		return true
 	}
 }
