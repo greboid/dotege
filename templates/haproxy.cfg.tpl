@@ -18,14 +18,13 @@ defaults
 
 frontend main
     mode    http
-    bind    :443 ssl strict-sni alpn h2,http/1.1 crt /certs/certs/chameth.com/combined.pem
+    bind    :443 ssl strict-sni alpn h2,http/1.1 crt /certs/
     bind    :80
     redirect scheme https code 301 if !{ ssl_fc }
     http-response set-header Strict-Transport-Security max-age=15768000
 {{- range .Hostnames }}
-    use_backend {{ .Name | replace "." "_" }} if {hdr(host) -i {{ .Name }}
-        {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end -}}
-    }
+    use_backend {{ .Name | replace "." "_" }} if { hdr(host) -i {{ .Name }}
+        {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end }} }
 {{- end -}}
 
 {{ range .Hostnames }}
