@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/csmith/dotege/model"
@@ -191,7 +192,8 @@ func main() {
 				})
 
 				for name, container := range updatedContainers {
-					updated = updated || deployCertForContainer(container)
+					certDeployed := deployCertForContainer(container)
+					updated = updated || certDeployed
 					delete(updatedContainers, name)
 				}
 
@@ -291,9 +293,15 @@ func deployCertForContainer(container *model.Container) bool {
 
 func deployCert(certificate *SavedCertificate) bool {
 	target := path.Join(config.DefaultCertDestination, fmt.Sprintf("%s.pem", certificate.Domains[0]))
+	content := append(certificate.Certificate, certificate.PrivateKey...)
 
-	// TODO: Check if the cert is different
-	err := ioutil.WriteFile(target, append(certificate.Certificate, certificate.PrivateKey...), 0700)
+	buf, _ := ioutil.ReadFile(target)
+	if bytes.Equal(buf, content) {
+		logger.Debugf("Certificate was up to date: %s", target)
+		return false
+	}
+
+	err := ioutil.WriteFile(target, content, 0700)
 	if err != nil {
 		logger.Warnf("Unable to write certificate %s - %s", target, err.Error())
 		return false
