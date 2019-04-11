@@ -15,6 +15,7 @@ defaults
     timeout server 5000
     compression algo gzip
     compression type text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript
+    default-server init-addr last,libc,none check resolvers docker_resolver
 
 frontend main
     mode    http
@@ -33,7 +34,7 @@ backend {{ .Name | replace "." "_" }}
     mode http
     {{- range .Containers }}
         {{- if index .Labels "com.chameth.proxy" }}
-    server server1 {{ .Name }}:{{ index .Labels "com.chameth.proxy" }} check resolvers docker_resolver
+    server server1 {{ .Name }}:{{ index .Labels "com.chameth.proxy" }}
         {{- end -}}
     {{- end -}}
     {{- if .RequiresAuth }}
