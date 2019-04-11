@@ -223,6 +223,7 @@ func signalContainer() {
 	for _, s := range config.Signals {
 		container, ok := containers[s.Name]
 		if ok {
+			logger.Debugf("Killing container %s with signal %s", s.Name, s.Signal)
 			err := dockerClient.ContainerKill(context.Background(), container.Id, s.Signal)
 			if err != nil {
 				logger.Errorf("Unable to send signal %s to container %s: %s", s.Signal, s.Name, err.Error())
