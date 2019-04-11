@@ -67,3 +67,11 @@ The port on which the container is listening for requests.
 Comma- or space-delimited list of hostnames that the container will handle requests for.
 Certificates will have the first host as the subject, and any additional hosts will be
 alternate names. Certificates are only reused if all hostnames match.
+
+== Contributing
+
+There is a [pre-commit](https://pre-commit.com/) to go fmt and run basic checks on
+commit; to enable it simply:
+
+    pip install pre-commit
+    pre-commit install
