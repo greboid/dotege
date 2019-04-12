@@ -1,8 +1,6 @@
 package main
 
 import (
-	"github.com/csmith/dotege/model"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"path"
 	"sort"
@@ -11,18 +9,17 @@ import (
 )
 
 type Context struct {
-	Containers map[string]*model.Container
-	Hostnames  map[string]*model.Hostname
+	Containers map[string]*Container
+	Hostnames  map[string]*Hostname
 }
 
 type Template struct {
-	config   model.TemplateConfig
+	config   TemplateConfig
 	content  string
 	template *template.Template
 }
 
 type TemplateGenerator struct {
-	logger    *zap.SugaredLogger
 	templates []*Template
 }
 
@@ -37,17 +34,15 @@ var funcMap = template.FuncMap{
 	},
 }
 
-func NewTemplateGenerator(logger *zap.SugaredLogger) *TemplateGenerator {
-	return &TemplateGenerator{
-		logger: logger,
-	}
+func NewTemplateGenerator() *TemplateGenerator {
+	return &TemplateGenerator{}
 }
 
-func (t *TemplateGenerator) AddTemplate(config model.TemplateConfig) {
-	t.logger.Infof("Adding template from %s, writing to %s", config.Source, config.Destination)
+func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
+	logger.Infof("Registered template from %s, writing to %s", config.Source, config.Destination)
 	tmpl, err := template.New(path.Base(config.Source)).Funcs(funcMap).ParseFiles(config.Source)
 	if err != nil {
-		t.logger.Fatal("Unable to parse template", err)
+		logger.Fatal("Unable to parse template", err)
 	}
 
 	buf, _ := ioutil.ReadFile(config.Destination)
@@ -60,7 +55,7 @@ func (t *TemplateGenerator) AddTemplate(config model.TemplateConfig) {
 
 func (t *TemplateGenerator) Generate(context Context) (updated bool) {
 	for _, tmpl := range t.templates {
-		t.logger.Debugf("Checking for updates to %s", tmpl.config.Source)
+		logger.Debugf("Checking for updates to %s", tmpl.config.Source)
 		builder := &strings.Builder{}
 		err := tmpl.template.Execute(builder, context)
 		if err != nil {
@@ -68,12 +63,14 @@ func (t *TemplateGenerator) Generate(context Context) (updated bool) {
 		}
 		if tmpl.content != builder.String() {
 			updated = true
-			t.logger.Infof("Writing updated template to %s", tmpl.config.Destination)
+			logger.Infof("Writing updated template to %s", tmpl.config.Destination)
 			tmpl.content = builder.String()
 			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
 			if err != nil {
-				t.logger.Fatal("Unable to write template", err)
+				logger.Fatal("Unable to write template", err)
 			}
+		} else {
+			logger.Debugf("Not writing template to %s as content is the same", tmpl.config.Destination)
 		}
 	}
 	return

@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/csmith/dotege/model"
 	"github.com/docker/docker/client"
-	"github.com/xenolf/lego/certcrypto"
-	"github.com/xenolf/lego/lego"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io/ioutil"
@@ -19,49 +16,30 @@ import (
 	"time"
 )
 
-const (
-	envCertDestinationKey         = "DOTEGE_CERT_DESTINATION"
-	envCertDestinationDefault     = "/data/certs/"
-	envDnsProviderKey             = "DOTEGE_DNS_PROVIDER"
-	envAcmeEmailKey               = "DOTEGE_ACME_EMAIL"
-	envAcmeEndpointKey            = "DOTEGE_ACME_ENDPOINT"
-	envAcmeKeyTypeKey             = "DOTEGE_ACME_KEY_TYPE"
-	envAcmeKeyTypeDefault         = "P384"
-	envAcmeCacheLocationKey       = "DOTEGE_ACME_CACHE_FILE"
-	envAcmeCacheLocationDefault   = "/data/config/certs.json"
-	envSignalContainerKey         = "DOTEGE_SIGNAL_CONTAINER"
-	envSignalContainerDefault     = ""
-	envSignalTypeKey              = "DOTEGE_SIGNAL_TYPE"
-	envSignalTypeDefault          = "HUP"
-	envTemplateDestinationKey     = "DOTEGE_TEMPLATE_DESTINATION"
-	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
-	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
-	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
-)
+// Container models a docker container that is running on the system.
+type Container struct {
+	Id     string
+	Name   string
+	Labels map[string]string
+}
+
+// Hostname describes a DNS name used for proxying, retrieving certificates, etc.
+type Hostname struct {
+	Name            string
+	Alternatives    map[string]bool
+	Containers      []*Container
+	CertDestination string
+	RequiresAuth    bool
+	AuthGroup       string
+}
 
 var (
 	logger             *zap.SugaredLogger
 	certificateManager *CertificateManager
-	config             *model.Config
+	config             *Config
 	dockerClient       *client.Client
-	containers         = make(map[string]*model.Container)
+	containers         = make(map[string]*Container)
 )
-
-func requiredVar(key string) (value string) {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		panic(fmt.Errorf("required environmental variable not defined: %s", key))
-	}
-	return
-}
-
-func optionalVar(key string, fallback string) (value string) {
-	value, ok := os.LookupEnv(key)
-	if !ok {
-		value = fallback
-	}
-	return
-}
 
 func monitorSignals() <-chan bool {
 	signals := make(chan os.Signal, 1)
@@ -89,54 +67,15 @@ func createLogger() *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func createSignalConfig() []model.ContainerSignal {
-	name := optionalVar(envSignalContainerKey, envSignalContainerDefault)
-	if name == envSignalContainerDefault {
-		return []model.ContainerSignal{}
-	} else {
-		return []model.ContainerSignal{
-			{
-				Name:   name,
-				Signal: optionalVar(envSignalTypeKey, envSignalTypeDefault),
-			},
-		}
-	}
-}
-
-func createConfig() {
-	config = &model.Config{
-		Templates: []model.TemplateConfig{
-			{
-				Source:      optionalVar(envTemplateSourceKey, envTemplateSourceDefault),
-				Destination: optionalVar(envTemplateDestinationKey, envTemplateDestinationDefault),
-			},
-		},
-		Labels: model.LabelConfig{
-			Hostnames:   "com.chameth.vhost",
-			RequireAuth: "com.chameth.auth",
-		},
-		Acme: model.AcmeConfig{
-			DnsProvider:   requiredVar(envDnsProviderKey),
-			Email:         requiredVar(envAcmeEmailKey),
-			Endpoint:      optionalVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
-			KeyType:       certcrypto.KeyType(optionalVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
-			CacheLocation: optionalVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
-		},
-		Signals:                createSignalConfig(),
-		DefaultCertActions:     model.COMBINE | model.FLATTEN,
-		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
-	}
-}
-
-func createTemplateGenerator(templates []model.TemplateConfig) *TemplateGenerator {
-	templateGenerator := NewTemplateGenerator(logger)
+func createTemplateGenerator(templates []TemplateConfig) *TemplateGenerator {
+	templateGenerator := NewTemplateGenerator()
 	for _, template := range templates {
 		templateGenerator.AddTemplate(template)
 	}
 	return templateGenerator
 }
 
-func createCertificateManager(config model.AcmeConfig) {
+func createCertificateManager(config AcmeConfig) {
 	certificateManager = NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
 	err := certificateManager.Init(config.Email)
 	if err != nil {
@@ -163,10 +102,10 @@ func main() {
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
-	updatedContainers := make(map[string]*model.Container)
+	updatedContainers := make(map[string]*Container)
 
 	go func() {
-		err := monitorContainers(dockerClient, dockerStopChan, func(container *model.Container) {
+		err := monitorContainers(dockerClient, dockerStopChan, func(container *Container) {
 			containers[container.Name] = container
 			updatedContainers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
@@ -185,7 +124,7 @@ func main() {
 		for {
 			select {
 			case <-jitterTimer.C:
-				hostnames := getHostnames(containers, *config)
+				hostnames := getHostnames(containers)
 				updated := templateGenerator.Generate(Context{
 					Containers: containers,
 					Hostnames:  hostnames,
@@ -234,7 +173,7 @@ func signalContainer() {
 	}
 }
 
-func getHostnamesForContainer(container *model.Container) []string {
+func getHostnamesForContainer(container *Container) []string {
 	if label, ok := container.Labels[config.Labels.Hostnames]; ok {
 		return strings.Split(strings.Replace(label, ",", " ", -1), " ")
 	} else {
@@ -242,19 +181,18 @@ func getHostnamesForContainer(container *model.Container) []string {
 	}
 }
 
-func getHostnames(containers map[string]*model.Container, config model.Config) (hostnames map[string]*model.Hostname) {
-	hostnames = make(map[string]*model.Hostname)
+func getHostnames(containers map[string]*Container) (hostnames map[string]*Hostname) {
+	hostnames = make(map[string]*Hostname)
 	for _, container := range containers {
 		if label, ok := container.Labels[config.Labels.Hostnames]; ok {
 			names := strings.Split(strings.Replace(label, ",", " ", -1), " ")
 			if hostname, ok := hostnames[names[0]]; ok {
 				hostname.Containers = append(hostname.Containers, container)
 			} else {
-				hostnames[names[0]] = &model.Hostname{
+				hostnames[names[0]] = &Hostname{
 					Name:            names[0],
 					Alternatives:    make(map[string]bool),
-					Containers:      []*model.Container{container},
-					CertActions:     config.DefaultCertActions,
+					Containers:      []*Container{container},
 					CertDestination: config.DefaultCertDestination,
 				}
 			}
@@ -269,13 +207,13 @@ func getHostnames(containers map[string]*model.Container, config model.Config) (
 	return
 }
 
-func addAlternatives(hostname *model.Hostname, alternatives []string) {
+func addAlternatives(hostname *Hostname, alternatives []string) {
 	for _, alternative := range alternatives {
 		hostname.Alternatives[alternative] = true
 	}
 }
 
-func deployCertForContainer(container *model.Container) bool {
+func deployCertForContainer(container *Container) bool {
 	hostnames := getHostnamesForContainer(container)
 	if len(hostnames) == 0 {
 		logger.Debugf("No labels found for container %s", container.Name)
