@@ -265,7 +265,7 @@ func deployCertForContainer(container *Container) bool {
 }
 
 func deployCert(certificate *SavedCertificate) bool {
-	name := fmt.Sprintf("%s.pem", strings.ReplaceAll("*", "_", certificate.Domains[0]))
+	name := fmt.Sprintf("%s.pem", strings.ReplaceAll(certificate.Domains[0], "*", "_"))
 	target := path.Join(config.DefaultCertDestination, name)
 	content := append(certificate.Certificate, certificate.PrivateKey...)
 
