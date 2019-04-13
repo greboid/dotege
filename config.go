@@ -5,6 +5,7 @@ import (
 	"github.com/xenolf/lego/certcrypto"
 	"github.com/xenolf/lego/lego"
 	"os"
+	"strings"
 )
 
 const (
@@ -25,6 +26,8 @@ const (
 	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
 	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
 	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
+	envWildcardDomainsKey         = "DOTEGE_WILDCARD_DOMAINS"
+	envWildcardDomainsDefault     = ""
 )
 
 // Config is the user-definable configuration for Dotege.
@@ -34,6 +37,7 @@ type Config struct {
 	Labels                 LabelConfig
 	DefaultCertDestination string
 	Acme                   AcmeConfig
+	WildCardDomains        []string
 }
 
 // TemplateConfig configures a single template for the generator.
@@ -114,5 +118,16 @@ func createConfig() *Config {
 		},
 		Signals:                createSignalConfig(),
 		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
+		WildCardDomains:        splitList(optionalVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
 	}
+}
+
+func splitList(input string) (result []string) {
+	result = []string{}
+	for _, part := range strings.Split(strings.ReplaceAll(input, " ", ","), ",") {
+		if len(part) > 0 {
+			result = append(result, part)
+		}
+	}
+	return
 }

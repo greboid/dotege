@@ -175,17 +175,52 @@ func signalContainer() {
 
 func getHostnamesForContainer(container *Container) []string {
 	if label, ok := container.Labels[config.Labels.Hostnames]; ok {
-		return strings.Split(strings.Replace(label, ",", " ", -1), " ")
+		return applyWildcards(splitList(label), config.WildCardDomains)
 	} else {
 		return []string{}
 	}
+}
+
+func applyWildcards(domains []string, wildcards []string) (result []string) {
+	result = []string{}
+	required := make(map[string]bool)
+	for _, domain := range domains {
+		found := false
+		for _, wildcard := range wildcards {
+			if wildcardMatches(wildcard, domain) {
+				if !required["*."+wildcard] {
+					result = append(result, "*."+wildcard)
+					required["*."+wildcard] = true
+				}
+				found = true
+				break
+			}
+		}
+
+		if !found && !required[domain] {
+			result = append(result, domain)
+			required[domain] = true
+		}
+	}
+	return
+}
+
+func wildcardMatches(wildcard, domain string) bool {
+	if len(domain) <= len(wildcard) {
+		return false
+	}
+
+	pivot := len(domain) - len(wildcard) - 1
+	start := domain[:pivot]
+	end := domain[pivot+1:]
+	return domain[pivot] == '.' && end == wildcard && !strings.ContainsRune(start, '.')
 }
 
 func getHostnames(containers map[string]*Container) (hostnames map[string]*Hostname) {
 	hostnames = make(map[string]*Hostname)
 	for _, container := range containers {
 		if label, ok := container.Labels[config.Labels.Hostnames]; ok {
-			names := strings.Split(strings.Replace(label, ",", " ", -1), " ")
+			names := splitList(label)
 			if hostname, ok := hostnames[names[0]]; ok {
 				hostname.Containers = append(hostname.Containers, container)
 			} else {
@@ -230,7 +265,8 @@ func deployCertForContainer(container *Container) bool {
 }
 
 func deployCert(certificate *SavedCertificate) bool {
-	target := path.Join(config.DefaultCertDestination, fmt.Sprintf("%s.pem", certificate.Domains[0]))
+	name := fmt.Sprintf("%s.pem", strings.ReplaceAll("*", "_", certificate.Domains[0]))
+	target := path.Join(config.DefaultCertDestination, name)
 	content := append(certificate.Certificate, certificate.PrivateKey...)
 
 	buf, _ := ioutil.ReadFile(target)

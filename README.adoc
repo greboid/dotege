@@ -52,6 +52,10 @@ Location to write the templated configuration file to. Defaults to `/data/output
 Path to a template to use to generate configuration. Defaults to `./templates/haproxy.cfg.tpl`,
 which is a bundled basic template for generating HAProxy configurations.
 
+`DOTEGE_WILDCARD_DOMAINS`::
+A space or comma separated list of domains that should use wildcard certificates.
+Defaults to an empty list.
+
 === Docker labels
 
 Dotege operates by parsing labels applied to docker containers. It understands the following:
