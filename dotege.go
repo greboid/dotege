@@ -36,8 +36,8 @@ type Hostname struct {
 var (
 	logger             *zap.SugaredLogger
 	certificateManager *CertificateManager
-	config             *Config
 	dockerClient       *client.Client
+	config             = createConfig()
 	containers         = make(map[string]*Container)
 )
 
@@ -88,7 +88,6 @@ func main() {
 	logger.Info("Dotege is starting")
 
 	doneChan := monitorSignals()
-	createConfig()
 
 	var err error
 	dockerStopChan := make(chan struct{})
