@@ -17,7 +17,7 @@ func Test_domainsMatch(t *testing.T) {
 		{"matching subject missing sans", args{[]string{"example.com", "example.org"}, []string{"example.com"}}, false},
 		{"matching subject extra sans", args{[]string{"example.com"}, []string{"example.com", "example.org"}}, false},
 		{"matching subject different sans", args{[]string{"example.com", "example.org"}, []string{"example.com", "example.net"}}, false},
-		{"mismatched subject and san", args{[]string{"example.org", "example.com"}, []string{"example.com", "example.org"}}, false},
+		{"mismatched subject and san", args{[]string{"example.org", "example.com"}, []string{"example.com", "example.org"}}, true},
 		{"reordered sans", args{[]string{"example.org", "example.com", "example.net"}, []string{"example.org", "example.net", "example.com"}}, true},
 	}
 	for _, tt := range tests {

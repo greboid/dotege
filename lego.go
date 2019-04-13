@@ -216,9 +216,6 @@ func domainsMatch(domains1, domains2 []string) bool {
 	if len(domains1) != len(domains2) {
 		return false
 	}
-	if domains1[0] != domains2[0] {
-		return false
-	}
 	sort.Strings(domains1)
 	sort.Strings(domains2)
 	for i := range domains1 {

@@ -37,7 +37,7 @@ var (
 	logger             *zap.SugaredLogger
 	certificateManager *CertificateManager
 	dockerClient       *client.Client
-	config             = createConfig()
+	config             *Config
 	containers         = make(map[string]*Container)
 )
 
@@ -88,6 +88,7 @@ func main() {
 	logger.Info("Dotege is starting")
 
 	doneChan := monitorSignals()
+	config = createConfig()
 
 	var err error
 	dockerStopChan := make(chan struct{})
