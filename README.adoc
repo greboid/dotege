@@ -1,5 +1,15 @@
 == Dotege
 
+Dotege is a tool to automatically generate configuration files from templates
+based on running docker containers. It also obtains SSL certificates for
+domains using Let's Encrypt, and can send a signal (such as HUP) to another
+container when the template changes.
+
+Out of the box it supports writing a HAProxy configuration file with
+appropriate entries for all containers with `com.chameth.*` labels.
+This enables automatic reverse proxying to any container with the
+relevant networks.
+
 === Configuration
 
 Dotege is configured using environment variables:
@@ -72,9 +82,72 @@ Comma- or space-delimited list of hostnames that the container will handle reque
 Certificates will have the first host as the subject, and any additional hosts will be
 alternate names. Certificates are only reused if all hostnames match.
 
+== Example compose file
+
+[source,yaml]
+----
+version: '3.5'
+services:
+  dotege:
+    image: csmith/dotege
+    restart: always
+    volumes:
+      - data:/data/config
+      - certs:/data/certs
+      - config:/data/output
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOTEGE_ACME_EMAIL=email@address
+      - DOTEGE_DNS_PROVIDER=httpreq
+      - DOTEGE_SIGNAL_CONTAINER=dotege_haproxy_1
+      - DOTEGE_SIGNAL_TYPE=USR2
+      - DOTEGE_WILDCARD_DOMAINS=mydomain.com
+      - HTTPREQ_ENDPOINT=https://example.com/
+      - HTTPREQ_USERNAME=user@name
+      - HTTPREQ_PASSWORD=p@ssw0rd
+
+  haproxy:
+    image: haproxy:2.0.1
+    restart: always
+    volumes:
+      - config:/usr/local/etc/haproxy:ro
+      - certs:/certs:ro
+    ports:
+      - 443:443
+      - 80:80
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
+
+volumes:
+  data:
+  certs:
+  config:
+----
+
+This creates an instance of Dotege, configured to use `httpreq` to perform DNS
+operations in order to generate SSL certificates. You can see the list of
+supported providers and their required environment variables in the
+https://go-acme.github.io/lego/dns/[Lego docs].
+
+The haproxy instance has read-only access to the config and certs volumes that
+will be populated by Dotege, and Dotege will send it the `USR2` signal whenever
+the config or certs change. With the default haproxy image this will cause it
+to reload the configuration.
+
+Container names must be resolvable from the haproxy container with the default
+template. This means the haproxy container should be on the same network as
+the containers it's proxying to. I recommend creating a global 'web' network
+(or similar) that all web-facing containers sit in.
+
 == Contributing
 
-There is a [pre-commit](https://pre-commit.com/) to go fmt and run basic checks on
+Contributions are welcome!
+
+There is a https://pre-commit.com/[pre-commit] to go fmt and run basic checks on
 commit; to enable it simply:
 
     pip install pre-commit
