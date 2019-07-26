@@ -11,8 +11,8 @@ defaults
     log global
     mode    http
     timeout connect 5000
-    timeout client 5000
-    timeout server 5000
+    timeout client 30000
+    timeout server 30000
     compression algo gzip
     compression type text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript
     default-server init-addr last,libc,none check resolvers docker_resolver
