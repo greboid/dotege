@@ -19,8 +19,8 @@ defaults
 
 frontend main
     mode    http
-    bind    :443 v4v6 ssl strict-sni alpn h2,http/1.1 crt /certs/
-    bind    :80 v4v6
+    bind    :::443 v4v6 ssl strict-sni alpn h2,http/1.1 crt /certs/
+    bind    :::80 v4v6
     http-request set-header X-Forwarded-For %[src]
     http-request set-header X-Forwarded-Proto https if { ssl_fc }
     redirect scheme https code 301 if !{ ssl_fc }
