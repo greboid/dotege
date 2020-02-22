@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/xenolf/lego/certcrypto"
-	"github.com/xenolf/lego/lego"
+	"github.com/go-acme/lego/v3/certcrypto"
+	"github.com/go-acme/lego/v3/lego"
 	"os"
 	"strings"
 )
