@@ -35,8 +35,6 @@ type Hostname struct {
 
 var (
 	logger             *zap.SugaredLogger
-	certificateManager *CertificateManager
-	dockerClient       *client.Client
 	config             *Config
 	containers         = make(map[string]*Container)
 )
@@ -75,12 +73,13 @@ func createTemplateGenerator(templates []TemplateConfig) *TemplateGenerator {
 	return templateGenerator
 }
 
-func createCertificateManager(config AcmeConfig) {
-	certificateManager = NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
-	err := certificateManager.Init(config.Email)
+func createCertificateManager(config AcmeConfig) *CertificateManager {
+	cm := NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
+	err := cm.Init(config.Email)
 	if err != nil {
 		panic(err)
 	}
+	return cm
 }
 
 func main() {
@@ -92,20 +91,21 @@ func main() {
 
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	dockerClient, err = client.NewEnvClient()
+	dockerClient, err := client.NewEnvClient()
 	if err != nil {
 		panic(err)
 	}
 
 	templateGenerator := createTemplateGenerator(config.Templates)
-	createCertificateManager(config.Acme)
+	certificateManager := createCertificateManager(config.Acme)
+	containerMonitor := ContainerMonitor{client: dockerClient}
 
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
 	updatedContainers := make(map[string]*Container)
 
 	go func() {
-		err := monitorContainers(dockerClient, ctx, func(container *Container) {
+		err := containerMonitor.monitor(ctx, func(container *Container) {
 			containers[container.Name] = container
 			updatedContainers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
@@ -131,19 +131,19 @@ func main() {
 				})
 
 				for name, container := range updatedContainers {
-					certDeployed := deployCertForContainer(container)
+					certDeployed := deployCertForContainer(certificateManager, container)
 					updated = updated || certDeployed
 					delete(updatedContainers, name)
 				}
 
 				if updated {
-					signalContainer()
+					signalContainer(dockerClient)
 				}
 			case <-redeployTimer.C:
 				logger.Info("Performing periodic certificate refresh")
 				for _, container := range containers {
-					deployCertForContainer(container)
-					signalContainer()
+					deployCertForContainer(certificateManager, container)
+					signalContainer(dockerClient)
 				}
 			}
 		}
@@ -158,7 +158,7 @@ func main() {
 	}
 }
 
-func signalContainer() {
+func signalContainer(dockerClient *client.Client) {
 	for _, s := range config.Signals {
 		container, ok := containers[s.Name]
 		if ok {
@@ -248,14 +248,14 @@ func addAlternatives(hostname *Hostname, alternatives []string) {
 	}
 }
 
-func deployCertForContainer(container *Container) bool {
+func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 	hostnames := getHostnamesForContainer(container)
 	if len(hostnames) == 0 {
 		logger.Debugf("No labels found for container %s", container.Name)
 		return false
 	}
 
-	err, cert := certificateManager.GetCertificate(hostnames)
+	err, cert := cm.GetCertificate(hostnames)
 	if err != nil {
 		logger.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false

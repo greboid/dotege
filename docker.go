@@ -14,11 +14,15 @@ type DockerClient interface {
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 }
 
-func monitorContainers(client DockerClient, ctx context.Context, addedFn func(*Container), removedFn func(string)) error {
-	ctx, cancel := context.WithCancel(ctx)
-	stream, errors := startEventStream(client, ctx)
+type ContainerMonitor struct {
+	client DockerClient
+}
 
-	if err := publishExistingContainers(client, ctx, addedFn); err != nil {
+func (m ContainerMonitor) monitor(ctx context.Context, addedFn func(*Container), removedFn func(string)) error {
+	ctx, cancel := context.WithCancel(ctx)
+	stream, errors := m.startEventStream(ctx)
+
+	if err := m.publishExistingContainers(ctx, addedFn); err != nil {
 		cancel()
 		return err
 	}
@@ -27,7 +31,7 @@ func monitorContainers(client DockerClient, ctx context.Context, addedFn func(*C
 		select {
 		case event := <-stream:
 			if event.Action == "create" {
-				err, container := inspectContainer(client, ctx, event.Actor.ID)
+				err, container := m.inspectContainer(ctx, event.Actor.ID)
 				if err != nil {
 					cancel()
 					return err
@@ -47,16 +51,16 @@ func monitorContainers(client DockerClient, ctx context.Context, addedFn func(*C
 	}
 }
 
-func startEventStream(client DockerClient, ctx context.Context) (<-chan events.Message, <-chan error) {
+func (m ContainerMonitor) startEventStream(ctx context.Context) (<-chan events.Message, <-chan error) {
 	args := filters.NewArgs()
 	args.Add("type", "container")
 	args.Add("event", "create")
 	args.Add("event", "destroy")
-	return client.Events(ctx, types.EventsOptions{Filters: args})
+	return m.client.Events(ctx, types.EventsOptions{Filters: args})
 }
 
-func publishExistingContainers(client DockerClient, ctx context.Context, addedFn func(*Container)) error {
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{})
+func (m ContainerMonitor) publishExistingContainers(ctx context.Context, addedFn func(*Container)) error {
+	containers, err := m.client.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to list containers: %s", err.Error())
 	}
@@ -71,8 +75,8 @@ func publishExistingContainers(client DockerClient, ctx context.Context, addedFn
 	return nil
 }
 
-func inspectContainer(client DockerClient, ctx context.Context, id string) (error, Container) {
-	container, err := client.ContainerInspect(ctx, id)
+func (m ContainerMonitor) inspectContainer(ctx context.Context, id string) (error, Container) {
+	container, err := m.client.ContainerInspect(ctx, id)
 	if err != nil {
 		return err, Container{}
 	}
