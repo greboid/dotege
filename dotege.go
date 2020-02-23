@@ -91,7 +91,7 @@ func main() {
 	config = createConfig()
 
 	var err error
-	dockerStopChan := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 	dockerClient, err = client.NewEnvClient()
 	if err != nil {
 		panic(err)
@@ -105,7 +105,7 @@ func main() {
 	updatedContainers := make(map[string]*Container)
 
 	go func() {
-		err := monitorContainers(dockerClient, dockerStopChan, func(container *Container) {
+		err := monitorContainers(dockerClient, ctx, func(container *Container) {
 			containers[container.Name] = container
 			updatedContainers[container.Name] = container
 			jitterTimer.Reset(100 * time.Millisecond)
@@ -151,7 +151,7 @@ func main() {
 
 	<-doneChan
 
-	dockerStopChan <- struct{}{}
+	cancel()
 	err = dockerClient.Close()
 	if err != nil {
 		panic(err)

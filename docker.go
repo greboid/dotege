@@ -14,8 +14,8 @@ type DockerClient interface {
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 }
 
-func monitorContainers(client DockerClient, stop <-chan struct{}, addedFn func(*Container), removedFn func(string)) error {
-	ctx, cancel := context.WithCancel(context.Background())
+func monitorContainers(client DockerClient, ctx context.Context, addedFn func(*Container), removedFn func(string)) error {
+	ctx, cancel := context.WithCancel(ctx)
 	stream, errors := startEventStream(client, ctx)
 
 	if err := publishExistingContainers(client, ctx, addedFn); err != nil {
@@ -41,8 +41,7 @@ func monitorContainers(client DockerClient, stop <-chan struct{}, addedFn func(*
 			cancel()
 			return err
 
-		case <-stop:
-			cancel()
+		case <-ctx.Done():
 			return nil
 		}
 	}
