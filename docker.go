@@ -18,11 +18,23 @@ type ContainerMonitor struct {
 	client DockerClient
 }
 
-func (m ContainerMonitor) monitor(ctx context.Context, addedFn func(*Container), removedFn func(string)) error {
+type Operation int
+
+const (
+	Added = iota
+	Removed
+)
+
+type ContainerEvent struct {
+	Operation Operation
+	Container Container
+}
+
+func (m ContainerMonitor) monitor(ctx context.Context, output chan<- ContainerEvent) error {
 	ctx, cancel := context.WithCancel(ctx)
 	stream, errors := m.startEventStream(ctx)
 
-	if err := m.publishExistingContainers(ctx, addedFn); err != nil {
+	if err := m.publishExistingContainers(ctx, output); err != nil {
 		cancel()
 		return err
 	}
@@ -36,9 +48,17 @@ func (m ContainerMonitor) monitor(ctx context.Context, addedFn func(*Container),
 					cancel()
 					return err
 				}
-				addedFn(&container)
+				output <- ContainerEvent{
+					Operation: Added,
+					Container: container,
+				}
 			} else {
-				removedFn(event.Actor.Attributes["name"])
+				output <- ContainerEvent{
+					Operation: Removed,
+					Container: Container{
+						Name: event.Actor.Attributes["name"],
+					},
+				}
 			}
 
 		case err := <-errors:
@@ -59,18 +79,21 @@ func (m ContainerMonitor) startEventStream(ctx context.Context) (<-chan events.M
 	return m.client.Events(ctx, types.EventsOptions{Filters: args})
 }
 
-func (m ContainerMonitor) publishExistingContainers(ctx context.Context, addedFn func(*Container)) error {
+func (m ContainerMonitor) publishExistingContainers(ctx context.Context, output chan<- ContainerEvent) error {
 	containers, err := m.client.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to list containers: %s", err.Error())
 	}
 
 	for _, container := range containers {
-		addedFn(&Container{
-			Id:     container.ID,
-			Name:   container.Names[0][1:],
-			Labels: container.Labels,
-		})
+		output <- ContainerEvent{
+			Operation: Added,
+			Container: Container{
+				Id:     container.ID,
+				Name:   container.Names[0][1:],
+				Labels: container.Labels,
+			},
+		}
 	}
 	return nil
 }

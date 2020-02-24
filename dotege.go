@@ -34,9 +34,9 @@ type Hostname struct {
 }
 
 var (
-	logger             *zap.SugaredLogger
-	config             *Config
-	containers         = make(map[string]*Container)
+	logger     *zap.SugaredLogger
+	config     *Config
+	containers = make(map[string]*Container)
 )
 
 func monitorSignals() <-chan bool {
@@ -103,20 +103,31 @@ func main() {
 	jitterTimer := time.NewTimer(time.Minute)
 	redeployTimer := time.NewTicker(time.Hour * 24)
 	updatedContainers := make(map[string]*Container)
+	containerEvents := make(chan ContainerEvent)
 
 	go func() {
-		err := containerMonitor.monitor(ctx, func(container *Container) {
-			containers[container.Name] = container
-			updatedContainers[container.Name] = container
-			jitterTimer.Reset(100 * time.Millisecond)
-		}, func(name string) {
-			delete(updatedContainers, name)
-			delete(containers, name)
-			jitterTimer.Reset(100 * time.Millisecond)
-		})
-
-		if err != nil {
+		if err := containerMonitor.monitor(ctx, containerEvents); err != nil {
 			logger.Fatal("Error monitoring containers: ", err.Error())
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case event := <-containerEvents:
+				switch event.Operation {
+				case Added:
+					containers[event.Container.Name] = &event.Container
+					updatedContainers[event.Container.Name] = &event.Container
+					jitterTimer.Reset(100 * time.Millisecond)
+				case Removed:
+					delete(updatedContainers, event.Container.Name)
+					delete(containers, event.Container.Name)
+					jitterTimer.Reset(100 * time.Millisecond)
+				}
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
