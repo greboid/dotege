@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func init () {
+func init() {
 	logger = createLogger()
 }
 
@@ -39,34 +39,28 @@ func TestContainer_ShouldProxy(t *testing.T) {
 }
 
 func TestContainer_Port(t *testing.T) {
-	type fields struct {
-		Id     string
-		Name   string
-		Labels map[string]string
-	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   int
+		name      string
+		container Container
+		want      int
 	}{
-		{"No labels", fields{Labels: map[string]string{}}, -1},
-		{"Text label", fields{Labels: map[string]string{labelProxy: "bob"}}, -1},
-		{"Non-integer label", fields{Labels: map[string]string{labelProxy: "3.14159"}}, -1},
-		{"Valid label", fields{Labels: map[string]string{labelProxy: "8080"}}, 8080},
-		{"Negative", fields{Labels: map[string]string{labelProxy: "-100"}}, -1},
-		{"Zero", fields{Labels: map[string]string{labelProxy: "0"}}, -1},
-		{"Minimum", fields{Labels: map[string]string{labelProxy: "1"}}, 1},
-		{"Maximum", fields{Labels: map[string]string{labelProxy: "65535"}}, 65535},
-		{"Too high", fields{Labels: map[string]string{labelProxy: "65536"}}, -1},
-		{"Bigger than int64", fields{Labels: map[string]string{labelProxy: "100000000000000000000"}}, -1},
+		{"No labels", Container{Labels: map[string]string{}}, -1},
+		{"Text label", Container{Labels: map[string]string{labelProxy: "bob"}}, -1},
+		{"Non-integer label", Container{Labels: map[string]string{labelProxy: "3.14159"}}, -1},
+		{"Valid label", Container{Labels: map[string]string{labelProxy: "8080"}}, 8080},
+		{"Negative", Container{Labels: map[string]string{labelProxy: "-100"}}, -1},
+		{"Zero", Container{Labels: map[string]string{labelProxy: "0"}}, -1},
+		{"Minimum", Container{Labels: map[string]string{labelProxy: "1"}}, 1},
+		{"Maximum", Container{Labels: map[string]string{labelProxy: "65535"}}, 65535},
+		{"Too high", Container{Labels: map[string]string{labelProxy: "65536"}}, -1},
+		{"Bigger than int64", Container{Labels: map[string]string{labelProxy: "100000000000000000000"}}, -1},
+		{"No labels, one port", Container{Labels: map[string]string{}, Ports: []int{123}}, 123},
+		{"No labels, two ports", Container{Labels: map[string]string{}, Ports: []int{123, 456}}, -1},
+		{"Label with one port", Container{Labels: map[string]string{labelProxy: "8080"}, Ports: []int{8081}}, 8080},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Container{
-				Id:     tt.fields.Id,
-				Name:   tt.fields.Name,
-				Labels: tt.fields.Labels,
-			}
+			c := &tt.container
 			if got := c.Port(); got != tt.want {
 				t.Errorf("Port() = %v, want %v", got, tt.want)
 			}

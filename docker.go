@@ -5,6 +5,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/go-connections/nat"
 	"golang.org/x/net/context"
 )
 
@@ -92,6 +93,7 @@ func (m ContainerMonitor) publishExistingContainers(ctx context.Context, output 
 				Id:     container.ID,
 				Name:   container.Names[0][1:],
 				Labels: container.Labels,
+				Ports:  portsFromContainerPorts(container.Ports),
 			},
 		}
 	}
@@ -108,5 +110,26 @@ func (m ContainerMonitor) inspectContainer(ctx context.Context, id string) (erro
 		Id:     container.ID,
 		Name:   container.Name[1:],
 		Labels: container.Config.Labels,
+		Ports:  portsFromContainerPortMap(container.HostConfig.PortBindings),
 	}
+}
+
+// portsFromContainerPortMap collates all non-exposed TCP ports from the given map
+func portsFromContainerPortMap(ps nat.PortMap) (ports []int) {
+	for p, bindings := range ps {
+		if p.Proto() == "tcp" && len(bindings) == 0 {
+			ports = append(ports, p.Int())
+		}
+	}
+	return
+}
+
+// portsFromContainerPorts collates all the non-exposed TCP ports from the given port list
+func portsFromContainerPorts(ps []types.Port) (ports []int) {
+	for _, p := range ps {
+		if p.Type == "tcp" && p.PublicPort == 0 {
+			ports = append(ports, int(p.PrivatePort))
+		}
+	}
+	return
 }

@@ -75,7 +75,10 @@ Specifies the name of an auth group (which must be defined appropriately in the 
 that users are required to be in to access the container.
 
 `com.chameth.proxy`::
-The port on which the container is listening for requests.
+The port on which the container is listening for requests. If `com.chameth.vhost` is specified
+and `com.chameth.proxy` is not and the container exposes a single non-bound port then Dotege
+will automatically use that port. That means you do not need to manually label the port for an
+nginx server, for instance, as the nginx image exposes port 80 (only).
 
 `com.chameth.vhost`::
 Comma- or space-delimited list of hostnames that the container will handle requests for.

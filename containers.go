@@ -16,6 +16,7 @@ type Container struct {
 	Id     string
 	Name   string
 	Labels map[string]string
+	Ports  []int
 }
 
 // ShouldProxy determines whether the container should be proxied to
@@ -43,6 +44,11 @@ func (c *Container) Port() int {
 
 		return p
 	}
+
+	if len(c.Ports) == 1 {
+		return c.Ports[0]
+	}
+
 	return -1
 }
 
