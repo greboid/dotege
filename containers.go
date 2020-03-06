@@ -27,10 +27,17 @@ func (c *Container) Port() int {
 	l, ok := c.Labels[labelProxy]
 	if ok {
 		p, err := strconv.Atoi(l)
+
 		if err != nil {
 			logger.Warnf("Invalid port specification on container %s: %s (%v)", c.Name, l, err)
 			return -1
 		}
+
+		if  p < 1 || p >= 1<<16 {
+			logger.Warnf("Invalid port specification on container %s: %s (out of range)", c.Name, l)
+			return -1
+		}
+
 		return p
 	}
 	return -1
