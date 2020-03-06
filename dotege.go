@@ -163,51 +163,8 @@ func signalContainer(dockerClient *client.Client) {
 	}
 }
 
-func getHostnamesForContainer(container *Container) []string {
-	if label, ok := container.Labels[labelVhost]; ok {
-		return applyWildcards(splitList(label), config.WildCardDomains)
-	} else {
-		return []string{}
-	}
-}
-
-func applyWildcards(domains []string, wildcards []string) (result []string) {
-	result = []string{}
-	required := make(map[string]bool)
-	for _, domain := range domains {
-		found := false
-		for _, wildcard := range wildcards {
-			if wildcardMatches(wildcard, domain) {
-				if !required["*."+wildcard] {
-					result = append(result, "*."+wildcard)
-					required["*."+wildcard] = true
-				}
-				found = true
-				break
-			}
-		}
-
-		if !found && !required[domain] {
-			result = append(result, domain)
-			required[domain] = true
-		}
-	}
-	return
-}
-
-func wildcardMatches(wildcard, domain string) bool {
-	if len(domain) <= len(wildcard) {
-		return false
-	}
-
-	pivot := len(domain) - len(wildcard) - 1
-	start := domain[:pivot]
-	end := domain[pivot+1:]
-	return domain[pivot] == '.' && end == wildcard && !strings.ContainsRune(start, '.')
-}
-
 func deployCertForContainer(cm *CertificateManager, container *Container) bool {
-	hostnames := getHostnamesForContainer(container)
+	hostnames := container.CertNames()
 	if len(hostnames) == 0 {
 		logger.Debugf("No labels found for container %s", container.Name)
 		return false
