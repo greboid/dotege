@@ -16,13 +16,6 @@ import (
 	"time"
 )
 
-// Container models a docker container that is running on the system.
-type Container struct {
-	Id     string
-	Name   string
-	Labels map[string]string
-}
-
 // Hostname describes a DNS name used for proxying, retrieving certificates, etc.
 type Hostname struct {
 	Name            string
@@ -185,7 +178,7 @@ func signalContainer(dockerClient *client.Client) {
 }
 
 func getHostnamesForContainer(container *Container) []string {
-	if label, ok := container.Labels[config.Labels.Hostnames]; ok {
+	if label, ok := container.Labels[labelVhost]; ok {
 		return applyWildcards(splitList(label), config.WildCardDomains)
 	} else {
 		return []string{}
@@ -230,7 +223,7 @@ func wildcardMatches(wildcard, domain string) bool {
 func getHostnames(containers map[string]*Container) (hostnames map[string]*Hostname) {
 	hostnames = make(map[string]*Hostname)
 	for _, container := range containers {
-		if label, ok := container.Labels[config.Labels.Hostnames]; ok {
+		if label, ok := container.Labels[labelVhost]; ok {
 			names := splitList(label)
 			if hostname, ok := hostnames[names[0]]; ok {
 				hostname.Containers = append(hostname.Containers, container)
@@ -244,7 +237,7 @@ func getHostnames(containers map[string]*Container) (hostnames map[string]*Hostn
 			}
 			addAlternatives(hostnames[names[0]], names[1:])
 
-			if label, ok = container.Labels[config.Labels.RequireAuth]; ok {
+			if label, ok = container.Labels[labelAuth]; ok {
 				hostnames[names[0]].RequiresAuth = true
 				hostnames[names[0]].AuthGroup = label
 			}

@@ -35,8 +35,8 @@ frontend main
 backend {{ .Name | replace "." "_" }}
     mode http
     {{- range .Containers }}
-        {{- if index .Labels "com.chameth.proxy" }}
-    server server1 {{ .Name }}:{{ index .Labels "com.chameth.proxy" }}
+        {{- if .ShouldProxy }}
+    server server1 {{ .Name }}:{{ .Port }}
         {{- end -}}
     {{- end -}}
     {{- if .RequiresAuth }}

@@ -34,7 +34,6 @@ const (
 type Config struct {
 	Templates              []TemplateConfig
 	Signals                []ContainerSignal
-	Labels                 LabelConfig
 	DefaultCertDestination string
 	Acme                   AcmeConfig
 	WildCardDomains        []string
@@ -50,12 +49,6 @@ type TemplateConfig struct {
 type ContainerSignal struct {
 	Name   string
 	Signal string
-}
-
-// LabelConfig describes the labels used for various properties.
-type LabelConfig struct {
-	Hostnames   string
-	RequireAuth string
 }
 
 // AcmeConfig describes the configuration to use for getting certs using ACME.
@@ -104,10 +97,6 @@ func createConfig() *Config {
 				Source:      optionalVar(envTemplateSourceKey, envTemplateSourceDefault),
 				Destination: optionalVar(envTemplateDestinationKey, envTemplateDestinationDefault),
 			},
-		},
-		Labels: LabelConfig{
-			Hostnames:   "com.chameth.vhost",
-			RequireAuth: "com.chameth.auth",
 		},
 		Acme: AcmeConfig{
 			DnsProvider:   requiredVar(envDnsProviderKey),
