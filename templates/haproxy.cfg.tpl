@@ -27,7 +27,7 @@ frontend main
     http-response set-header Strict-Transport-Security max-age=15768000
 {{- range .Hostnames }}
     use_backend {{ .Name | replace "." "_" }} if { hdr(host) -i {{ .Name }}
-        {{- range $san, $_ := .Alternatives }} || hdr(host) -i {{ $san }} {{- end }} }
+        {{- range .Alternatives }} || hdr(host) -i {{ . }} {{- end }} }
 {{- end -}}
 
 {{ range .Hostnames }}

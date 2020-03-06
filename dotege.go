@@ -16,20 +16,10 @@ import (
 	"time"
 )
 
-// Hostname describes a DNS name used for proxying, retrieving certificates, etc.
-type Hostname struct {
-	Name            string
-	Alternatives    map[string]bool
-	Containers      []*Container
-	CertDestination string
-	RequiresAuth    bool
-	AuthGroup       string
-}
-
 var (
 	logger     *zap.SugaredLogger
 	config     *Config
-	containers = make(map[string]*Container)
+	containers = make(Containers)
 )
 
 func monitorSignals() <-chan bool {
@@ -128,11 +118,7 @@ func main() {
 		for {
 			select {
 			case <-jitterTimer.C:
-				hostnames := getHostnames(containers)
-				updated := templateGenerator.Generate(Context{
-					Containers: containers,
-					Hostnames:  hostnames,
-				})
+				updated := templateGenerator.Generate(containers.TemplateContext())
 
 				for name, container := range updatedContainers {
 					certDeployed := deployCertForContainer(certificateManager, container)
@@ -218,38 +204,6 @@ func wildcardMatches(wildcard, domain string) bool {
 	start := domain[:pivot]
 	end := domain[pivot+1:]
 	return domain[pivot] == '.' && end == wildcard && !strings.ContainsRune(start, '.')
-}
-
-func getHostnames(containers map[string]*Container) (hostnames map[string]*Hostname) {
-	hostnames = make(map[string]*Hostname)
-	for _, container := range containers {
-		if label, ok := container.Labels[labelVhost]; ok {
-			names := splitList(label)
-			if hostname, ok := hostnames[names[0]]; ok {
-				hostname.Containers = append(hostname.Containers, container)
-			} else {
-				hostnames[names[0]] = &Hostname{
-					Name:            names[0],
-					Alternatives:    make(map[string]bool),
-					Containers:      []*Container{container},
-					CertDestination: config.DefaultCertDestination,
-				}
-			}
-			addAlternatives(hostnames[names[0]], names[1:])
-
-			if label, ok = container.Labels[labelAuth]; ok {
-				hostnames[names[0]].RequiresAuth = true
-				hostnames[names[0]].AuthGroup = label
-			}
-		}
-	}
-	return
-}
-
-func addAlternatives(hostname *Hostname, alternatives []string) {
-	for _, alternative := range alternatives {
-		hostname.Alternatives[alternative] = true
-	}
 }
 
 func deployCertForContainer(cm *CertificateManager, container *Container) bool {

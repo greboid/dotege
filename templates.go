@@ -8,7 +8,7 @@ import (
 	"text/template"
 )
 
-type Context struct {
+type TemplateContext struct {
 	Containers map[string]*Container
 	Hostnames  map[string]*Hostname
 }
@@ -53,7 +53,7 @@ func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
 	})
 }
 
-func (t *TemplateGenerator) Generate(context Context) (updated bool) {
+func (t *TemplateGenerator) Generate(context TemplateContext) (updated bool) {
 	for _, tmpl := range t.templates {
 		logger.Debugf("Checking for updates to %s", tmpl.config.Source)
 		builder := &strings.Builder{}
