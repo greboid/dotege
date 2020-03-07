@@ -39,6 +39,9 @@ backend {{ .Name | replace "." "_" }}
     server server1 {{ .Name }}:{{ .Port }}
         {{- end -}}
     {{- end -}}
+    {{- range $k, $v := .Headers }}
+    http-response set-header {{ $k }} "{{ $v | replace "\"" "\\\"" }}"
+    {{- end -}}
     {{- if .RequiresAuth }}
     acl authed_{{ .Name | replace "." "_" }} http_auth({{ .AuthGroup }})
     http-request auth if !authed_{{ .Name | replace "." "_" }}

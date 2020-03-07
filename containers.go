@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	labelVhost = "com.chameth.vhost"
-	labelProxy = "com.chameth.proxy"
-	labelAuth  = "com.chameth.auth"
+	labelVhost   = "com.chameth.vhost"
+	labelProxy   = "com.chameth.proxy"
+	labelAuth    = "com.chameth.auth"
+	labelHeaders = "com.chameth.headers"
 )
 
 // Container describes a docker container that is running on the system.
@@ -50,6 +51,18 @@ func (c *Container) Port() int {
 	}
 
 	return -1
+}
+
+// Headers returns the list of headers that should be applied for this container
+func (c *Container) Headers() map[string]string {
+	res := make(map[string]string)
+	for k, v := range c.Labels {
+		if strings.HasPrefix(k, labelHeaders) {
+			parts := strings.SplitN(v, " ", 2)
+			res[strings.TrimSpace(strings.TrimRight(parts[0], ":"))] = strings.TrimSpace(parts[1])
+		}
+	}
+	return res
 }
 
 // CertNames returns a list of names required on a certificate for this container, taking into account wildcard
@@ -135,6 +148,7 @@ type Hostname struct {
 	Name         string
 	Alternatives map[string]string
 	Containers   []*Container
+	Headers      map[string]string
 	RequiresAuth bool
 	AuthGroup    string
 }
@@ -144,6 +158,7 @@ func NewHostname(name string) *Hostname {
 	return &Hostname{
 		Name:         name,
 		Alternatives: make(map[string]string),
+		Headers:      make(map[string]string),
 	}
 }
 
@@ -158,5 +173,9 @@ func (h *Hostname) update(alternates []string, container *Container) {
 	if label, ok := container.Labels[labelAuth]; ok {
 		h.RequiresAuth = true
 		h.AuthGroup = label
+	}
+
+	for k, v := range container.Headers() {
+		h.Headers[k] = v
 	}
 }

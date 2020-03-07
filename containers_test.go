@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -63,6 +64,30 @@ func TestContainer_Port(t *testing.T) {
 			c := &tt.container
 			if got := c.Port(); got != tt.want {
 				t.Errorf("Port() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestContainer_Headers(t *testing.T) {
+	tests := []struct {
+		name   string
+		labels map[string]string
+		want   map[string]string
+	}{
+		{"No labels", map[string]string{}, map[string]string{}},
+		{"Other labels", map[string]string{"foo": "bar", "bar": "baz"}, map[string]string{}},
+		{"Plain header", map[string]string{labelHeaders: "Foo: bar"}, map[string]string{"Foo": "bar"}},
+		{"Plain header without colon", map[string]string{labelHeaders: "Foo bar"}, map[string]string{"Foo": "bar"}},
+		{"Multiple headers", map[string]string{labelHeaders + ".1": "Foo bar", labelHeaders + ".2": "Baz: Quux"}, map[string]string{"Foo": "bar", "Baz": "Quux"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Container{
+				Labels: tt.labels,
+			}
+			if got := c.Headers(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Headers() = %v, want %v", got, tt.want)
 			}
 		})
 	}

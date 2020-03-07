@@ -74,6 +74,11 @@ Dotege operates by parsing labels applied to docker containers. It understands t
 Specifies the name of an auth group (which must be defined appropriately in the template file)
 that users are required to be in to access the container.
 
+`com.chameth.headers`::
+Specifies response headers to be sent to the client for all requests to the container. Any
+label with this as a prefix will be used, so multiple headers can be specified as
+`com.chameth.headers.1`, or `com.chameth.headers-frame-options`, for example.
+
 `com.chameth.proxy`::
 The port on which the container is listening for requests. If `com.chameth.vhost` is specified
 and `com.chameth.proxy` is not and the container exposes a single non-bound port then Dotege
