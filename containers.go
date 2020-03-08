@@ -59,7 +59,14 @@ func (c *Container) Headers() map[string]string {
 	for k, v := range c.Labels {
 		if strings.HasPrefix(k, labelHeaders) {
 			parts := strings.SplitN(v, " ", 2)
-			res[strings.TrimSpace(strings.TrimRight(parts[0], ":"))] = strings.TrimSpace(parts[1])
+			if len(parts) == 2 {
+				name := strings.TrimSpace(strings.TrimRight(parts[0], ":"))
+				value := strings.TrimSpace(parts[1])
+				res[name] = value
+				logger.Debugf("Container %s has header %s => %s", c.Name, name, value)
+			} else {
+				logger.Warnf("Container %s has invalid label %s (%s) - expecting name and value", c.Name, k, v)
+			}
 		}
 	}
 	return res
@@ -176,6 +183,7 @@ func (h *Hostname) update(alternates []string, container *Container) {
 	}
 
 	for k, v := range container.Headers() {
+		logger.Debugf("Adding header for hostname %s: %s => %s", h.Name, k, v)
 		h.Headers[k] = v
 	}
 }
