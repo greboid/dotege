@@ -2,7 +2,7 @@ FROM golang:alpine AS build
 WORKDIR /go/src/app
 RUN apk add git build-base
 COPY . .
-RUN CGO_ENABLED=0 GO111MODULE=on go install .
+RUN CGO_ENABLED=0 GO111MODULE=on go install -ldflags "-X main.GitSHA=$(git rev-parse --short HEAD)" .
 
 FROM scratch
 COPY --from=build /go/bin/dotege /dotege

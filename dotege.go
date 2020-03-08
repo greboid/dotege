@@ -20,6 +20,7 @@ var (
 	logger     *zap.SugaredLogger
 	config     *Config
 	containers = make(Containers)
+	GitSHA     string
 )
 
 func monitorSignals() <-chan bool {
@@ -67,7 +68,7 @@ func createCertificateManager(config AcmeConfig) *CertificateManager {
 
 func main() {
 	logger = createLogger()
-	logger.Info("Dotege is starting")
+	logger.Infof("Dotege %s is starting", GitSHA)
 
 	doneChan := monitorSignals()
 	config = createConfig()
