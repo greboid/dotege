@@ -101,10 +101,12 @@ func main() {
 			case event := <-containerEvents:
 				switch event.Operation {
 				case Added:
+					logger.Debugf("Container added: %s", event.Container.Name)
 					containers[event.Container.Name] = &event.Container
 					updatedContainers[event.Container.Name] = &event.Container
 					jitterTimer.Reset(100 * time.Millisecond)
 				case Removed:
+					logger.Debugf("Container removed: %s", event.Container.Name)
 					delete(updatedContainers, event.Container.Name)
 					delete(containers, event.Container.Name)
 					jitterTimer.Reset(100 * time.Millisecond)
