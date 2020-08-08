@@ -18,11 +18,13 @@ import (
 
 var (
 	loggers = struct {
-		main    *zap.SugaredLogger
-		headers *zap.SugaredLogger
+		main       *zap.SugaredLogger
+		headers    *zap.SugaredLogger
+		containers *zap.SugaredLogger
 	}{
-		main:    createLogger(),
-		headers: zap.NewNop().Sugar(),
+		main:       createLogger(),
+		headers:    zap.NewNop().Sugar(),
+		containers: zap.NewNop().Sugar(),
 	}
 
 	config     *Config
@@ -110,11 +112,28 @@ func main() {
 				switch event.Operation {
 				case Added:
 					loggers.main.Debugf("Container added: %s", event.Container.Name)
+					loggers.containers.Debugf("New container with name %s has id: %s", event.Container.Name, event.Container.Id)
 					containers[event.Container.Name] = &event.Container
 					updatedContainers[event.Container.Name] = &event.Container
 					jitterTimer.Reset(100 * time.Millisecond)
 				case Removed:
 					loggers.main.Debugf("Container removed: %s", event.Container.Name)
+
+					_, inUpdated := updatedContainers[event.Container.Name]
+					c, inExisting := containers[event.Container.Name]
+					id := "Unknown"
+					if inExisting {
+						id = c.Id
+					}
+
+					loggers.containers.Debugf(
+						"Removed container with name %s, was in updated containers: %t, main containers: %t, id: %s",
+						event.Container.Name,
+						inUpdated,
+						inExisting,
+						id,
+					)
+
 					delete(updatedContainers, event.Container.Name)
 					delete(containers, event.Container.Name)
 					jitterTimer.Reset(100 * time.Millisecond)
@@ -129,6 +148,7 @@ func main() {
 		for {
 			select {
 			case <-jitterTimer.C:
+				loggers.containers.Debugf("Processing updated containers: %v", updatedContainers)
 				updated := templateGenerator.Generate(containers.TemplateContext())
 
 				for name, container := range updatedContainers {
@@ -167,6 +187,10 @@ func main() {
 func setUpDebugLoggers() {
 	if config.DebugHeaders {
 		loggers.headers = loggers.main
+	}
+
+	if config.DebugContainers {
+		loggers.containers = loggers.main
 	}
 }
 
