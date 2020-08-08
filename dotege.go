@@ -134,8 +134,13 @@ func main() {
 				}
 			case <-redeployTimer.C:
 				logger.Info("Performing periodic certificate refresh")
+				updated := false
+
 				for _, container := range containers {
-					deployCertForContainer(certificateManager, container)
+					updated = updated || deployCertForContainer(certificateManager, container)
+				}
+
+				if updated {
 					signalContainer(dockerClient)
 				}
 			}
