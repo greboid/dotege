@@ -11,6 +11,8 @@ import (
 const (
 	envCertDestinationKey         = "DOTEGE_CERT_DESTINATION"
 	envCertDestinationDefault     = "/data/certs/"
+	envDebugKey                   = "DOTEGE_DEBUG"
+	envDebugHeadersValue          = "headers"
 	envDnsProviderKey             = "DOTEGE_DNS_PROVIDER"
 	envAcmeEmailKey               = "DOTEGE_ACME_EMAIL"
 	envAcmeEndpointKey            = "DOTEGE_ACME_ENDPOINT"
@@ -37,6 +39,7 @@ type Config struct {
 	DefaultCertDestination string
 	Acme                   AcmeConfig
 	WildCardDomains        []string
+	DebugHeaders           bool
 }
 
 // TemplateConfig configures a single template for the generator.
@@ -91,6 +94,7 @@ func createSignalConfig() []ContainerSignal {
 }
 
 func createConfig() *Config {
+	debug := toMap(splitList(strings.ToLower(optionalVar(envDebugKey, ""))))
 	return &Config{
 		Templates: []TemplateConfig{
 			{
@@ -108,6 +112,7 @@ func createConfig() *Config {
 		Signals:                createSignalConfig(),
 		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
 		WildCardDomains:        splitList(optionalVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
+		DebugHeaders:           debug[envDebugHeadersValue],
 	}
 }
 
@@ -119,4 +124,12 @@ func splitList(input string) (result []string) {
 		}
 	}
 	return
+}
+
+func toMap(input []string) map[string]bool {
+	res := make(map[string]bool)
+	for k := range input {
+		res[input[k]] = true
+	}
+	return res
 }

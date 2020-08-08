@@ -34,12 +34,12 @@ func (c *Container) Port() int {
 		p, err := strconv.Atoi(l)
 
 		if err != nil {
-			logger.Warnf("Invalid port specification on container %s: %s (%v)", c.Name, l, err)
+			loggers.main.Warnf("Invalid port specification on container %s: %s (%v)", c.Name, l, err)
 			return -1
 		}
 
 		if p < 1 || p >= 1<<16 {
-			logger.Warnf("Invalid port specification on container %s: %s (out of range)", c.Name, l)
+			loggers.main.Warnf("Invalid port specification on container %s: %s (out of range)", c.Name, l)
 			return -1
 		}
 
@@ -63,9 +63,9 @@ func (c *Container) Headers() map[string]string {
 				name := strings.TrimSpace(strings.TrimRight(parts[0], ":"))
 				value := strings.TrimSpace(parts[1])
 				res[name] = value
-				logger.Debugf("Container %s has header %s => %s", c.Name, name, value)
+				loggers.headers.Debugf("Container %s has header %s => %s", c.Name, name, value)
 			} else {
-				logger.Warnf("Container %s has invalid label %s (%s) - expecting name and value", c.Name, k, v)
+				loggers.main.Warnf("Container %s has invalid label %s (%s) - expecting name and value", c.Name, k, v)
 			}
 		}
 	}
@@ -183,7 +183,7 @@ func (h *Hostname) update(alternates []string, container *Container) {
 	}
 
 	for k, v := range container.Headers() {
-		logger.Debugf("Adding header for hostname %s: %s => %s", h.Name, k, v)
+		loggers.headers.Debugf("Adding header for hostname %s: %s => %s", h.Name, k, v)
 		h.Headers[k] = v
 	}
 }

@@ -17,7 +17,14 @@ import (
 )
 
 var (
-	logger     *zap.SugaredLogger
+	loggers = struct {
+		main    *zap.SugaredLogger
+		headers *zap.SugaredLogger
+	}{
+		main:    createLogger(),
+		headers: zap.NewNop().Sugar(),
+	}
+
 	config     *Config
 	containers = make(Containers)
 	GitSHA     string
@@ -58,7 +65,7 @@ func createTemplateGenerator(templates []TemplateConfig) *TemplateGenerator {
 }
 
 func createCertificateManager(config AcmeConfig) *CertificateManager {
-	cm := NewCertificateManager(logger, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
+	cm := NewCertificateManager(loggers.main, config.Endpoint, config.KeyType, config.DnsProvider, config.CacheLocation)
 	err := cm.Init(config.Email)
 	if err != nil {
 		panic(err)
@@ -67,11 +74,12 @@ func createCertificateManager(config AcmeConfig) *CertificateManager {
 }
 
 func main() {
-	logger = createLogger()
-	logger.Infof("Dotege %s is starting", GitSHA)
+	loggers.main.Infof("Dotege %s is starting", GitSHA)
 
 	doneChan := monitorSignals()
 	config = createConfig()
+
+	setUpDebugLoggers()
 
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
@@ -91,7 +99,7 @@ func main() {
 
 	go func() {
 		if err := containerMonitor.monitor(ctx, containerEvents); err != nil {
-			logger.Fatal("Error monitoring containers: ", err.Error())
+			loggers.main.Fatal("Error monitoring containers: ", err.Error())
 		}
 	}()
 
@@ -101,12 +109,12 @@ func main() {
 			case event := <-containerEvents:
 				switch event.Operation {
 				case Added:
-					logger.Debugf("Container added: %s", event.Container.Name)
+					loggers.main.Debugf("Container added: %s", event.Container.Name)
 					containers[event.Container.Name] = &event.Container
 					updatedContainers[event.Container.Name] = &event.Container
 					jitterTimer.Reset(100 * time.Millisecond)
 				case Removed:
-					logger.Debugf("Container removed: %s", event.Container.Name)
+					loggers.main.Debugf("Container removed: %s", event.Container.Name)
 					delete(updatedContainers, event.Container.Name)
 					delete(containers, event.Container.Name)
 					jitterTimer.Reset(100 * time.Millisecond)
@@ -133,7 +141,7 @@ func main() {
 					signalContainer(dockerClient)
 				}
 			case <-redeployTimer.C:
-				logger.Info("Performing periodic certificate refresh")
+				loggers.main.Info("Performing periodic certificate refresh")
 				updated := false
 
 				for _, container := range containers {
@@ -156,17 +164,23 @@ func main() {
 	}
 }
 
+func setUpDebugLoggers() {
+	if config.DebugHeaders {
+		loggers.headers = loggers.main
+	}
+}
+
 func signalContainer(dockerClient *client.Client) {
 	for _, s := range config.Signals {
 		container, ok := containers[s.Name]
 		if ok {
-			logger.Debugf("Killing container %s with signal %s", s.Name, s.Signal)
+			loggers.main.Debugf("Killing container %s with signal %s", s.Name, s.Signal)
 			err := dockerClient.ContainerKill(context.Background(), container.Id, s.Signal)
 			if err != nil {
-				logger.Errorf("Unable to send signal %s to container %s: %s", s.Signal, s.Name, err.Error())
+				loggers.main.Errorf("Unable to send signal %s to container %s: %s", s.Signal, s.Name, err.Error())
 			}
 		} else {
-			logger.Warnf("Couldn't signal container %s as it is not running", s.Name)
+			loggers.main.Warnf("Couldn't signal container %s as it is not running", s.Name)
 		}
 	}
 }
@@ -174,13 +188,13 @@ func signalContainer(dockerClient *client.Client) {
 func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 	hostnames := container.CertNames()
 	if len(hostnames) == 0 {
-		logger.Debugf("No labels found for container %s", container.Name)
+		loggers.main.Debugf("No labels found for container %s", container.Name)
 		return false
 	}
 
 	err, cert := cm.GetCertificate(hostnames)
 	if err != nil {
-		logger.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
+		loggers.main.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false
 	} else {
 		return deployCert(cert)
@@ -194,16 +208,16 @@ func deployCert(certificate *SavedCertificate) bool {
 
 	buf, _ := ioutil.ReadFile(target)
 	if bytes.Equal(buf, content) {
-		logger.Debugf("Certificate was up to date: %s", target)
+		loggers.main.Debugf("Certificate was up to date: %s", target)
 		return false
 	}
 
 	err := ioutil.WriteFile(target, content, 0700)
 	if err != nil {
-		logger.Warnf("Unable to write certificate %s - %s", target, err.Error())
+		loggers.main.Warnf("Unable to write certificate %s - %s", target, err.Error())
 		return false
 	} else {
-		logger.Infof("Updated certificate file %s", target)
+		loggers.main.Infof("Updated certificate file %s", target)
 		return true
 	}
 }

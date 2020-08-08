@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-func init() {
-	logger = createLogger()
-}
-
 func TestContainer_ShouldProxy(t *testing.T) {
 	type fields struct {
 		Id     string

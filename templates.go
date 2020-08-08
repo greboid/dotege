@@ -39,10 +39,10 @@ func NewTemplateGenerator() *TemplateGenerator {
 }
 
 func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
-	logger.Infof("Registered template from %s, writing to %s", config.Source, config.Destination)
+	loggers.main.Infof("Registered template from %s, writing to %s", config.Source, config.Destination)
 	tmpl, err := template.New(path.Base(config.Source)).Funcs(funcMap).ParseFiles(config.Source)
 	if err != nil {
-		logger.Fatal("Unable to parse template", err)
+		loggers.main.Fatal("Unable to parse template", err)
 	}
 
 	buf, _ := ioutil.ReadFile(config.Destination)
@@ -55,7 +55,7 @@ func (t *TemplateGenerator) AddTemplate(config TemplateConfig) {
 
 func (t *TemplateGenerator) Generate(context TemplateContext) (updated bool) {
 	for _, tmpl := range t.templates {
-		logger.Debugf("Checking for updates to %s", tmpl.config.Source)
+		loggers.main.Debugf("Checking for updates to %s", tmpl.config.Source)
 		builder := &strings.Builder{}
 		err := tmpl.template.Execute(builder, context)
 		if err != nil {
@@ -63,14 +63,14 @@ func (t *TemplateGenerator) Generate(context TemplateContext) (updated bool) {
 		}
 		if tmpl.content != builder.String() {
 			updated = true
-			logger.Infof("Writing updated template to %s", tmpl.config.Destination)
+			loggers.main.Infof("Writing updated template to %s", tmpl.config.Destination)
 			tmpl.content = builder.String()
 			err = ioutil.WriteFile(tmpl.config.Destination, []byte(builder.String()), 0666)
 			if err != nil {
-				logger.Fatal("Unable to write template", err)
+				loggers.main.Fatal("Unable to write template", err)
 			}
 		} else {
-			logger.Debugf("Not writing template to %s as content is the same", tmpl.config.Destination)
+			loggers.main.Debugf("Not writing template to %s as content is the same", tmpl.config.Destination)
 		}
 	}
 	return

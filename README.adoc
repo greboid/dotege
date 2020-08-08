@@ -17,6 +17,10 @@ Dotege is configured using environment variables:
 `DOTEGE_CERT_DESTINATION`::
 The folder where certificates will be placed. Defaults to `/data/certs`.
 
+`DOTEGE_DEBUG`::
+Enables advanced logging of certain information in Dotege. Comma-separated list of
+topics to enable logging for. Valid options are: `headers`. Optional.
+
 `DOTEGE_DNS_PROVIDER`::
 The DNS provider to use. Must be one https://go-acme.github.io/lego/dns/[supported by Lego].
 The DNS provider will also be configured using environmental variables, as documented by
