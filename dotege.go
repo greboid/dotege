@@ -113,29 +113,23 @@ func main() {
 				case Added:
 					loggers.main.Debugf("Container added: %s", event.Container.Name)
 					loggers.containers.Debugf("New container with name %s has id: %s", event.Container.Name, event.Container.Id)
-					containers[event.Container.Name] = &event.Container
-					updatedContainers[event.Container.Name] = &event.Container
+					containers[event.Container.Id] = &event.Container
+					updatedContainers[event.Container.Id] = &event.Container
 					jitterTimer.Reset(100 * time.Millisecond)
 				case Removed:
-					loggers.main.Debugf("Container removed: %s", event.Container.Name)
+					loggers.main.Debugf("Container removed: %s", event.Container.Id)
 
-					_, inUpdated := updatedContainers[event.Container.Name]
-					c, inExisting := containers[event.Container.Name]
-					id := "Unknown"
-					if inExisting {
-						id = c.Id
-					}
-
+					_, inUpdated := updatedContainers[event.Container.Id]
+					_, inExisting := containers[event.Container.Id]
 					loggers.containers.Debugf(
-						"Removed container with name %s, was in updated containers: %t, main containers: %t, id: %s",
-						event.Container.Name,
+						"Removed container with ID %s, was in updated containers: %t, main containers: %t",
+						event.Container.Id,
 						inUpdated,
 						inExisting,
-						id,
 					)
 
-					delete(updatedContainers, event.Container.Name)
-					delete(containers, event.Container.Name)
+					delete(updatedContainers, event.Container.Id)
+					delete(containers, event.Container.Id)
 					jitterTimer.Reset(100 * time.Millisecond)
 				}
 			case <-ctx.Done():
@@ -196,8 +190,14 @@ func setUpDebugLoggers() {
 
 func signalContainer(dockerClient *client.Client) {
 	for _, s := range config.Signals {
-		container, ok := containers[s.Name]
-		if ok {
+		var container *Container
+		for _, c := range containers {
+			if c.Name == c.Name {
+				container = c
+			}
+		}
+
+		if container != nil {
 			loggers.main.Debugf("Killing container %s with signal %s", s.Name, s.Signal)
 			err := dockerClient.ContainerKill(context.Background(), container.Id, s.Signal)
 			if err != nil {

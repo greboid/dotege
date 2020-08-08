@@ -57,7 +57,7 @@ func (m ContainerMonitor) monitor(ctx context.Context, output chan<- ContainerEv
 				output <- ContainerEvent{
 					Operation: Removed,
 					Container: Container{
-						Name: event.Actor.Attributes["name"],
+						Id: event.Actor.ID,
 					},
 				}
 			}
