@@ -1,6 +1,6 @@
 module github.com/csmith/dotege
 
-go 1.13
+go 1.14
 
 require (
 	github.com/Azure/azure-sdk-for-go v39.2.0+incompatible // indirect
