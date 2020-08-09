@@ -21,8 +21,9 @@ The folder where certificates will be placed. Defaults to `/data/certs`.
 Enables advanced logging of certain information in Dotege. Comma-separated list of
 topics to enable logging for. Optiona. Valid options are:
 
- * `containers` - verbose information about containers that are seem to start/stop
- * `headers` - verbose information about custom headers (`com.chameth.headers` labels)
+ * `containers` - containers that are seen to start/stop
+ * `headers` - custom headers (`com.chameth.headers` labels)
+ * `hostnames` - mapping of containers to hostnames
 
 `DOTEGE_DNS_PROVIDER`::
 The DNS provider to use. Must be one https://go-acme.github.io/lego/dns/[supported by Lego].

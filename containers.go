@@ -132,11 +132,21 @@ func (c Containers) TemplateContext() TemplateContext {
 
 // hostnames builds a mapping of primary hostnames to deals about the containers that use them
 func (c Containers) hostnames() (hostnames map[string]*Hostname) {
+	loggers.hostnames.Debugf("Calculating hostnames for %d containers", len(c))
 	hostnames = make(map[string]*Hostname)
 	for _, container := range c {
 		if label, ok := container.Labels[labelVhost]; ok {
 			names := splitList(label)
 			primary := names[0]
+
+			loggers.hostnames.Debugf(
+				"Container %s (ID: %s) has vhosts: %s, port: %d, proxy status: %t",
+				container.Name,
+				container.Id,
+				label,
+				container.Port(),
+				container.ShouldProxy(),
+			)
 
 			h := hostnames[primary]
 			if h == nil {
@@ -145,6 +155,9 @@ func (c Containers) hostnames() (hostnames map[string]*Hostname) {
 			}
 
 			h.update(names[1:], container)
+			loggers.hostnames.Debugf("Hostname %s now has %d containers and %d alternate names", h.Name, len(h.Containers), len(h.Alternatives))
+		} else {
+			loggers.hostnames.Debugf("Container %s (ID: %s) has no vhost label", container.Name, container.Id)
 		}
 	}
 	return

@@ -20,10 +20,12 @@ var (
 	loggers = struct {
 		main       *zap.SugaredLogger
 		headers    *zap.SugaredLogger
+		hostnames  *zap.SugaredLogger
 		containers *zap.SugaredLogger
 	}{
 		main:       createLogger(),
 		headers:    zap.NewNop().Sugar(),
+		hostnames:  zap.NewNop().Sugar(),
 		containers: zap.NewNop().Sugar(),
 	}
 
@@ -179,12 +181,16 @@ func main() {
 }
 
 func setUpDebugLoggers() {
+	if config.DebugContainers {
+		loggers.containers = loggers.main
+	}
+
 	if config.DebugHeaders {
 		loggers.headers = loggers.main
 	}
 
-	if config.DebugContainers {
-		loggers.containers = loggers.main
+	if config.DebugHostnames {
+		loggers.hostnames = loggers.main
 	}
 }
 

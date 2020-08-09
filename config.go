@@ -14,6 +14,7 @@ const (
 	envDebugKey                   = "DOTEGE_DEBUG"
 	envDebugContainersValue       = "containers"
 	envDebugHeadersValue          = "headers"
+	envDebugHostnamesValue        = "hostnames"
 	envDnsProviderKey             = "DOTEGE_DNS_PROVIDER"
 	envAcmeEmailKey               = "DOTEGE_ACME_EMAIL"
 	envAcmeEndpointKey            = "DOTEGE_ACME_ENDPOINT"
@@ -43,6 +44,7 @@ type Config struct {
 
 	DebugContainers bool
 	DebugHeaders    bool
+	DebugHostnames  bool
 }
 
 // TemplateConfig configures a single template for the generator.
@@ -118,6 +120,7 @@ func createConfig() *Config {
 
 		DebugContainers: debug[envDebugContainersValue],
 		DebugHeaders:    debug[envDebugHeadersValue],
+		DebugHostnames:  debug[envDebugHostnamesValue],
 	}
 }
 
