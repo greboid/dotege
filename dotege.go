@@ -198,7 +198,7 @@ func signalContainer(dockerClient *client.Client) {
 	for _, s := range config.Signals {
 		var container *Container
 		for _, c := range containers {
-			if c.Name == c.Name {
+			if c.Name == s.Name {
 				container = c
 			}
 		}

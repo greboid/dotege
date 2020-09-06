@@ -19,7 +19,7 @@ The folder where certificates will be placed. Defaults to `/data/certs`.
 
 `DOTEGE_DEBUG`::
 Enables advanced logging of certain information in Dotege. Comma-separated list of
-topics to enable logging for. Optiona. Valid options are:
+topics to enable logging for. Optional. Valid options are:
 
  * `containers` - containers that are seen to start/stop
  * `headers` - custom headers (`com.chameth.headers` labels)
