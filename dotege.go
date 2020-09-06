@@ -204,7 +204,7 @@ func signalContainer(dockerClient *client.Client) {
 		}
 
 		if container != nil {
-			loggers.main.Debugf("Killing container %s with signal %s", s.Name, s.Signal)
+			loggers.main.Debugf("Killing container %s (%s) with signal %s", container.Name, container.Id, s.Signal)
 			err := dockerClient.ContainerKill(context.Background(), container.Id, s.Signal)
 			if err != nil {
 				loggers.main.Errorf("Unable to send signal %s to container %s: %s", s.Signal, s.Name, err.Error())
