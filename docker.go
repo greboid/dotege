@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/go-connections/nat"
 	"golang.org/x/net/context"
+	"time"
 )
 
 type DockerClient interface {
@@ -34,6 +35,7 @@ type ContainerEvent struct {
 func (m ContainerMonitor) monitor(ctx context.Context, output chan<- ContainerEvent) error {
 	ctx, cancel := context.WithCancel(ctx)
 	stream, errors := m.startEventStream(ctx)
+	timer := time.NewTimer(30 * time.Second)
 
 	if err := m.publishExistingContainers(ctx, output); err != nil {
 		cancel()
@@ -65,6 +67,12 @@ func (m ContainerMonitor) monitor(ctx context.Context, output chan<- ContainerEv
 		case err := <-errors:
 			cancel()
 			return err
+
+		case <- timer.C:
+			if err := m.publishExistingContainers(ctx, output); err != nil {
+				cancel()
+				return err
+			}
 
 		case <-ctx.Done():
 			return nil
