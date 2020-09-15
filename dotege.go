@@ -60,12 +60,12 @@ func createLogger() *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func createTemplateGenerator(templates []TemplateConfig) *TemplateGenerator {
-	templateGenerator := NewTemplateGenerator()
-	for _, template := range templates {
-		templateGenerator.AddTemplate(template)
+func createTemplates(configs []TemplateConfig) Templates {
+	var templates Templates
+	for _, t := range configs {
+		templates = append(templates, CreateTemplate(t.Source, t.Destination))
 	}
-	return templateGenerator
+	return templates
 }
 
 func createCertificateManager(config AcmeConfig) *CertificateManager {
@@ -92,7 +92,7 @@ func main() {
 		panic(err)
 	}
 
-	templateGenerator := createTemplateGenerator(config.Templates)
+	templates := createTemplates(config.Templates)
 	certificateManager := createCertificateManager(config.Acme)
 	containerMonitor := ContainerMonitor{client: dockerClient}
 
@@ -145,7 +145,13 @@ func main() {
 			select {
 			case <-jitterTimer.C:
 				loggers.containers.Debugf("Processing updated containers: %v", updatedContainers)
-				updated := templateGenerator.Generate(containers.TemplateContext())
+				updated := templates.Generate(struct {
+					Containers map[string]*Container
+					Hostnames  map[string]*Hostname
+				}{
+					containers,
+					containers.Hostnames(),
+				})
 
 				for name, container := range updatedContainers {
 					certDeployed := deployCertForContainer(certificateManager, container)

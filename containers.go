@@ -122,16 +122,8 @@ func wildcardMatches(wildcard, domain string) bool {
 // Containers maps container IDs to their corresponding information
 type Containers map[string]*Container
 
-// TemplateContext builds a context to use to render templates
-func (c Containers) TemplateContext() TemplateContext {
-	return TemplateContext{
-		Containers: c,
-		Hostnames:  c.hostnames(),
-	}
-}
-
-// hostnames builds a mapping of primary hostnames to deals about the containers that use them
-func (c Containers) hostnames() (hostnames map[string]*Hostname) {
+// Hostnames builds a mapping of primary hostnames to deals about the containers that use them
+func (c Containers) Hostnames() (hostnames map[string]*Hostname) {
 	loggers.hostnames.Debugf("Calculating hostnames for %d containers", len(c))
 	hostnames = make(map[string]*Hostname)
 	for _, container := range c {
