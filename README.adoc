@@ -1,5 +1,7 @@
 == Dotege
 
+image::https://csmith.semaphoreci.com/badges/Dotege/branches/master.svg[Build Status,link=https://csmith.semaphoreci.com/projects/Dotege]
+
 Dotege is a tool to automatically generate configuration files from templates
 based on running docker containers. It also obtains SSL certificates for
 domains using Let's Encrypt, and can send a signal (such as HUP) to another
@@ -158,6 +160,40 @@ Container names must be resolvable from the haproxy container with the default
 template. This means the haproxy container should be on the same network as
 the containers it's proxying to. I recommend creating a global 'web' network
 (or similar) that all web-facing containers sit in.
+
+== Writing templates
+
+Dotege comes with two templates out of the box - one to create a working
+link:templates/haproxy.cfg.tpl[HAProxy config], and one to output a
+link:templates/domains.txt.tpl[list of domains] suitable for use with a
+tool like https://github.com/dehydrated-io/dehydrated/[Dehydrated].
+
+Dotege uses Go's built in https://golang.org/pkg/text/template/[text/template]
+package which provides extensive documentation for the template syntax itself.
+If you've used Smarty, Jinja or other templating systems the syntax should look
+pretty similar.
+
+Dotege provides the following data to templates:
+
+* Containers - a map of container IDs to the container's details:
+** Id - the ID of the container
+** Headers - map of header names to values from `com.chameth.headers` labels
+** Labels - map of all label names to values
+** Name - the name of the container
+** Port - the port the container accepts traffic on, or -1 if it couldn't be determined
+** Ports - all ports exposed by the container
+** ShouldProxy - boolean indicating whether the container has a hostname and port
+* Hostnames - a map of known primary hostnames to their details:
+** Alternatives - a map of alternate names for this hostname
+** AuthGroup - the name of the group users must be a member of to access this hostname (if RequiresAuth is true)
+** Containers - all containers that accept traffic for this hostname
+** Headers - map of header names to values from `com.chameth.headers` labels
+** Name - the name of the primary hostname
+** RequiresAuth - boolean indicating whether authentication is required
+
+Most templates will want to act on the `Hostnames` data primarily, as this groups up
+containers that accept traffic to the same domains, and avoids having to deal with
+containers that aren't configured for use with Dotege.
 
 == Contributing
 
