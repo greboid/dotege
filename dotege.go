@@ -148,9 +148,13 @@ func main() {
 				updated := templates.Generate(struct {
 					Containers map[string]*Container
 					Hostnames  map[string]*Hostname
+					Groups     []string
+					Users      []User
 				}{
 					containers,
 					containers.Hostnames(),
+					groups(config.Users),
+					config.Users,
 				})
 
 				for name, container := range updatedContainers {
@@ -256,4 +260,19 @@ func deployCert(certificate *SavedCertificate) bool {
 		loggers.main.Infof("Updated certificate file %s", target)
 		return true
 	}
+}
+
+func groups(users []User) []string {
+	groups := make(map[string]bool)
+	for i := range users {
+		for j := range users[i].Groups {
+			groups[users[i].Groups[j]] = true
+		}
+	}
+
+	var res []string
+	for g := range groups {
+		res = append(res, g)
+	}
+	return res
 }

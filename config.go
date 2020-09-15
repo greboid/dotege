@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
+	"gopkg.in/yaml.v2"
 	"os"
 	"strings"
 )
@@ -30,6 +31,8 @@ const (
 	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
 	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
 	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
+	envUsersKey                   = "DOTEGE_USERS"
+	envUsersDefault               = ""
 	envWildcardDomainsKey         = "DOTEGE_WILDCARD_DOMAINS"
 	envWildcardDomainsDefault     = ""
 )
@@ -41,10 +44,18 @@ type Config struct {
 	DefaultCertDestination string
 	Acme                   AcmeConfig
 	WildCardDomains        []string
+	Users                  []User
 
 	DebugContainers bool
 	DebugHeaders    bool
 	DebugHostnames  bool
+}
+
+// User holds the details of a single user used for ACL purposes.
+type User struct {
+	Name     string   `yaml:"name"`
+	Password string   `yaml:"password"`
+	Groups   []string `yaml:"groups"`
 }
 
 // TemplateConfig configures a single template for the generator.
@@ -117,11 +128,21 @@ func createConfig() *Config {
 		Signals:                createSignalConfig(),
 		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
 		WildCardDomains:        splitList(optionalVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
+		Users:                  readUsers(),
 
 		DebugContainers: debug[envDebugContainersValue],
 		DebugHeaders:    debug[envDebugHeadersValue],
 		DebugHostnames:  debug[envDebugHostnamesValue],
 	}
+}
+
+func readUsers() []User {
+	var users []User
+	err := yaml.Unmarshal([]byte(optionalVar(envUsersKey, envUsersDefault)), &users)
+	if err != nil {
+		panic(fmt.Errorf("unable to parse users struct: %s", err))
+	}
+	return users
 }
 
 func splitList(input string) (result []string) {

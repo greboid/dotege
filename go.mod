@@ -43,5 +43,6 @@ require (
 	google.golang.org/genproto v0.0.0-20200914193844-75d14daec038 // indirect
 	google.golang.org/grpc v1.32.0 // indirect
 	gopkg.in/ini.v1 v1.61.0 // indirect
+	gopkg.in/yaml.v2 v2.3.0
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
 )
