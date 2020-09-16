@@ -221,6 +221,9 @@ services:
 For HAProxy, passwords are hashed using the crypt(3) system call - the easiest
 way to generate them is using the `mkpassword` utility.
 
+NB: If you are using docker-compose then any `$` characters in the hashed password
+will need to be escaped by doubling them up (i.e. replace `$` with `$$`).
+
 === Restricting access
 
 To require basic authentication, the container should have the `com.chameth.auth` label.

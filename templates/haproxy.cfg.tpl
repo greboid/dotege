@@ -26,9 +26,7 @@ userlist dotege
 
     {{- range .Users }}
     user {{.Name}} password {{.Password}}
-    {{- if len .Groups | lt 0 }} groups
-      {{- range .Groups }} {{.}}{{- end -}}
-    {{- end }}
+    {{- if len .Groups | lt 0 }} groups {{ .Groups | join "," }}{{ end }}
     {{- end }}
 {{- end }}
 
