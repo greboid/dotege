@@ -171,7 +171,9 @@ func main() {
 				updated := false
 
 				for _, container := range containers {
-					updated = updated || deployCertForContainer(certificateManager, container)
+					if deployCertForContainer(certificateManager, container) {
+						updated = true
+					}
 				}
 
 				if updated {
