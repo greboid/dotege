@@ -19,6 +19,15 @@ Dotege is configured using environment variables:
 `DOTEGE_CERT_DESTINATION`::
 The folder where certificates will be placed. Defaults to `/data/certs`.
 
+`DOTEGE_CERT_GID`::
+If specified, certificate files will be `chowned` to this numeric group ID.
+
+`DOTEGE_CERT_MODE`::
+The file mode that should be applied to certificate files. Defaults to `0600`.
+
+`DOTEGE_CERT_UID`::
+If specified, certificate files will be `chowned` to this numeric user ID.
+
 `DOTEGE_DEBUG`::
 Enables advanced logging of certain information in Dotege. Comma-separated list of
 topics to enable logging for. Optional. Valid options are:

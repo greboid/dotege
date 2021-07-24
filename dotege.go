@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/docker/docker/client"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -14,6 +11,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/docker/docker/client"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -254,14 +255,19 @@ func deployCert(certificate *SavedCertificate) bool {
 		return false
 	}
 
-	err := ioutil.WriteFile(target, content, 0700)
+	err := ioutil.WriteFile(target, content, config.CertMode)
 	if err != nil {
 		loggers.main.Warnf("Unable to write certificate %s - %s", target, err.Error())
 		return false
-	} else {
-		loggers.main.Infof("Updated certificate file %s", target)
-		return true
 	}
+
+	if err := os.Chown(target, config.CertUid, config.CertGid); err != nil {
+		loggers.main.Warnf("Unable to chown certificate %s - %s", target, err.Error())
+		return false
+	}
+
+	loggers.main.Infof("Updated certificate file %s", target)
+	return true
 }
 
 func groups(users []User) []string {

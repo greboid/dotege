@@ -2,16 +2,24 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/lego"
 	"gopkg.in/yaml.v2"
-	"os"
-	"strings"
 )
 
 const (
 	envCertDestinationKey         = "DOTEGE_CERT_DESTINATION"
 	envCertDestinationDefault     = "/data/certs/"
+	envCertUserIdKey              = "DOTEGE_CERT_UID"
+	envCertUserIdDefault          = -1
+	envCertGroupIdKey             = "DOTEGE_CERT_GID"
+	envCertGroupIdDefault         = -1
+	envCertModeKey                = "DOTEGE_CERT_MODE"
+	envCertModeDefault            = 0600
 	envDebugKey                   = "DOTEGE_DEBUG"
 	envDebugContainersValue       = "containers"
 	envDebugHeadersValue          = "headers"
@@ -42,6 +50,9 @@ type Config struct {
 	Templates              []TemplateConfig
 	Signals                []ContainerSignal
 	DefaultCertDestination string
+	CertUid                int
+	CertGid                int
+	CertMode               os.FileMode
 	Acme                   AcmeConfig
 	WildCardDomains        []string
 	Users                  []User
@@ -79,7 +90,7 @@ type AcmeConfig struct {
 	CacheLocation string
 }
 
-func requiredVar(key string) (value string) {
+func requiredStringVar(key string) (value string) {
 	value, ok := os.LookupEnv(key)
 	if !ok {
 		panic(fmt.Errorf("required environmental variable not defined: %s", key))
@@ -87,7 +98,7 @@ func requiredVar(key string) (value string) {
 	return
 }
 
-func optionalVar(key string, fallback string) (value string) {
+func optionalStringVar(key string, fallback string) (value string) {
 	value, ok := os.LookupEnv(key)
 	if !ok {
 		value = fallback
@@ -95,39 +106,60 @@ func optionalVar(key string, fallback string) (value string) {
 	return
 }
 
+func optionalIntVar(key string, fallback int) int {
+	if value, ok := os.LookupEnv(key); ok {
+		if num, err := strconv.Atoi(value); err == nil {
+			return num
+		}
+	}
+	return fallback
+}
+
+func optionalFilemodeVar(key string, fallback os.FileMode) os.FileMode {
+	if value, ok := os.LookupEnv(key); ok {
+		if num, err := strconv.ParseInt(value, 8, 64); err == nil {
+			return os.FileMode(num)
+		}
+	}
+	return fallback
+}
+
 func createSignalConfig() []ContainerSignal {
-	name := optionalVar(envSignalContainerKey, envSignalContainerDefault)
+	name := optionalStringVar(envSignalContainerKey, envSignalContainerDefault)
 	if name == envSignalContainerDefault {
 		return []ContainerSignal{}
 	} else {
 		return []ContainerSignal{
 			{
 				Name:   name,
-				Signal: optionalVar(envSignalTypeKey, envSignalTypeDefault),
+				Signal: optionalStringVar(envSignalTypeKey, envSignalTypeDefault),
 			},
 		}
 	}
 }
 
 func createConfig() *Config {
-	debug := toMap(splitList(strings.ToLower(optionalVar(envDebugKey, ""))))
+	debug := toMap(splitList(strings.ToLower(optionalStringVar(envDebugKey, ""))))
 	return &Config{
 		Templates: []TemplateConfig{
 			{
-				Source:      optionalVar(envTemplateSourceKey, envTemplateSourceDefault),
-				Destination: optionalVar(envTemplateDestinationKey, envTemplateDestinationDefault),
+				Source:      optionalStringVar(envTemplateSourceKey, envTemplateSourceDefault),
+				Destination: optionalStringVar(envTemplateDestinationKey, envTemplateDestinationDefault),
 			},
 		},
 		Acme: AcmeConfig{
-			DnsProvider:   requiredVar(envDnsProviderKey),
-			Email:         requiredVar(envAcmeEmailKey),
-			Endpoint:      optionalVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
-			KeyType:       certcrypto.KeyType(optionalVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
-			CacheLocation: optionalVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
+			DnsProvider:   requiredStringVar(envDnsProviderKey),
+			Email:         requiredStringVar(envAcmeEmailKey),
+			Endpoint:      optionalStringVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
+			KeyType:       certcrypto.KeyType(optionalStringVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
+			CacheLocation: optionalStringVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
 		},
 		Signals:                createSignalConfig(),
-		DefaultCertDestination: optionalVar(envCertDestinationKey, envCertDestinationDefault),
-		WildCardDomains:        splitList(optionalVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
+		DefaultCertDestination: optionalStringVar(envCertDestinationKey, envCertDestinationDefault),
+		CertGid:                optionalIntVar(envCertGroupIdKey, envCertGroupIdDefault),
+		CertUid:                optionalIntVar(envCertUserIdKey, envCertUserIdDefault),
+		CertMode:               optionalFilemodeVar(envCertModeKey, envCertModeDefault),
+		WildCardDomains:        splitList(optionalStringVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
 		Users:                  readUsers(),
 
 		DebugContainers: debug[envDebugContainersValue],
@@ -138,7 +170,7 @@ func createConfig() *Config {
 
 func readUsers() []User {
 	var users []User
-	err := yaml.Unmarshal([]byte(optionalVar(envUsersKey, envUsersDefault)), &users)
+	err := yaml.Unmarshal([]byte(optionalStringVar(envUsersKey, envUsersDefault)), &users)
 	if err != nil {
 		panic(fmt.Errorf("unable to parse users struct: %s", err))
 	}
