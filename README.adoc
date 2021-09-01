@@ -1,7 +1,5 @@
 == Dotege
 
-image::https://csmith.semaphoreci.com/badges/Dotege/branches/master.svg[Build Status,link=https://csmith.semaphoreci.com/projects/Dotege]
-
 Dotege is a tool to automatically generate configuration files from templates
 based on running docker containers. It also obtains SSL certificates for
 domains using Let's Encrypt, and can send a signal (such as HUP) to another
@@ -121,7 +119,7 @@ alternate names. Certificates are only reused if all hostnames match.
 version: '3.5'
 services:
   dotege:
-    image: csmith/dotege
+    image: ghcr.io/csmith/dotege
     restart: always
     volumes:
       - data:/data/config
