@@ -88,7 +88,7 @@ func main() {
 
 	var err error
 	ctx, cancel := context.WithCancel(context.Background())
-	dockerClient, err := client.NewEnvClient()
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		panic(err)
 	}
