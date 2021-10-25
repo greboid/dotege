@@ -114,7 +114,7 @@ will automatically use that port. That means you do not need to manually label t
 nginx server, for instance, as the nginx image exposes port 80 (only).
 
 `com.chameth.proxytag`::
-Arbitrary tag to control which contains an instance of Dotege will deal with. If specified,
+Arbitrary tag to control which containers an instance of Dotege will deal with. If specified,
 the container will be ignored by any instance of Dotege that does not have the same value
 passed in using the `DOTEGE_PROXYTAG` env var.
 
