@@ -114,11 +114,15 @@ func main() {
 			case event := <-containerEvents:
 				switch event.Operation {
 				case Added:
-					loggers.main.Debugf("Container added: %s", event.Container.Name)
-					loggers.containers.Debugf("New container with name %s has id: %s", event.Container.Name, event.Container.Id)
-					containers[event.Container.Id] = &event.Container
-					updatedContainers[event.Container.Id] = &event.Container
-					jitterTimer.Reset(100 * time.Millisecond)
+					if event.Container.Labels[labelProxyTag] == config.ProxyTag {
+						loggers.main.Debugf("Container added: %s", event.Container.Name)
+						loggers.containers.Debugf("New container with name %s has id: %s", event.Container.Name, event.Container.Id)
+						containers[event.Container.Id] = &event.Container
+						updatedContainers[event.Container.Id] = &event.Container
+						jitterTimer.Reset(100 * time.Millisecond)
+					} else {
+						loggers.main.Debugf("Container ignored due to proxy tag: %s (wanted: %s, got: %s)", event.Container.Name, event.Container.Labels[labelProxyTag], config.ProxyTag)
+					}
 				case Removed:
 					loggers.main.Debugf("Container removed: %s", event.Container.Id)
 

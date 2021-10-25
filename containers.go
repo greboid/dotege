@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	labelVhost   = "com.chameth.vhost"
-	labelProxy   = "com.chameth.proxy"
-	labelAuth    = "com.chameth.auth"
-	labelHeaders = "com.chameth.headers"
+	labelVhost    = "com.chameth.vhost"
+	labelProxy    = "com.chameth.proxy"
+	labelProxyTag = "com.chameth.proxytag"
+	labelAuth     = "com.chameth.auth"
+	labelHeaders  = "com.chameth.headers"
 )
 
 // Container describes a docker container that is running on the system.

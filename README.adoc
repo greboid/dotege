@@ -65,6 +65,12 @@ values are:
 +
 The default value is `P384`.
 
+`DOTEGE_PROXYTAG`::
+Only containers with a matching `com.chameth.proxytag` label will be processed by
+Dotege. This allows you to run multiple instances that handle separate containers.
+If not specified, any container without a `com.chameth.proxytag` label will be
+included.
+
 `DOTEGE_SIGNAL_CONTAINER`::
 The name of a container that should be sent a signal when the template or certificates
 are changed. No signal is sent if not specified.
@@ -106,6 +112,11 @@ The port on which the container is listening for requests. If `com.chameth.vhost
 and `com.chameth.proxy` is not and the container exposes a single non-bound port then Dotege
 will automatically use that port. That means you do not need to manually label the port for an
 nginx server, for instance, as the nginx image exposes port 80 (only).
+
+`com.chameth.proxytag`::
+Arbitrary tag to control which contains an instance of Dotege will deal with. If specified,
+the container will be ignored by any instance of Dotege that does not have the same value
+passed in using the `DOTEGE_PROXYTAG` env var.
 
 `com.chameth.vhost`::
 Comma- or space-delimited list of hostnames that the container will handle requests for.

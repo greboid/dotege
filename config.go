@@ -43,6 +43,8 @@ const (
 	envUsersDefault               = ""
 	envWildcardDomainsKey         = "DOTEGE_WILDCARD_DOMAINS"
 	envWildcardDomainsDefault     = ""
+	envProxyTagKey                = "DOTEGE_PROXYTAG"
+	envProxyTagDefault            = ""
 )
 
 // Config is the user-definable configuration for Dotege.
@@ -56,6 +58,7 @@ type Config struct {
 	Acme                   AcmeConfig
 	WildCardDomains        []string
 	Users                  []User
+	ProxyTag               string
 
 	DebugContainers bool
 	DebugHeaders    bool
@@ -161,6 +164,7 @@ func createConfig() *Config {
 		CertMode:               optionalFilemodeVar(envCertModeKey, envCertModeDefault),
 		WildCardDomains:        splitList(optionalStringVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
 		Users:                  readUsers(),
+		ProxyTag:               optionalStringVar(envProxyTagKey, envProxyTagDefault),
 
 		DebugContainers: debug[envDebugContainersValue],
 		DebugHeaders:    debug[envDebugHeadersValue],
