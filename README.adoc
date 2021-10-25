@@ -310,6 +310,13 @@ Most templates will want to act on the `Hostnames` data primarily, as this group
 containers that accept traffic to the same domains, and avoids having to deal with
 containers that aren't configured for use with Dotege.
 
+== Build tags
+
+If you know in advance you will only use a single DNS provider, you can use build tags to include only support
+for that provider in the binary. For example to support only the `httpreq` provider you can build with
+`go build -tags lego_httpreq`. See the [legotapas](https://github.com/csmith/legotapas) project for more
+info.
+
 == Contributing
 
 Contributions are welcome!

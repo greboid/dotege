@@ -7,16 +7,17 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/json"
+	"io/ioutil"
+	"sort"
+	"time"
+
+	"github.com/csmith/legotapas"
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/log"
-	"github.com/go-acme/lego/v4/providers/dns"
 	"github.com/go-acme/lego/v4/registration"
 	"go.uber.org/zap"
-	"io/ioutil"
-	"sort"
-	"time"
 )
 
 type AcmeUser struct {
@@ -154,7 +155,7 @@ func (c *CertificateManager) createClient() error {
 		return err
 	}
 
-	provider, err := dns.NewDNSChallengeProviderByName(c.dnsProvider)
+	provider, err := legotapas.CreateProvider(c.dnsProvider)
 	if err != nil {
 		return err
 	}

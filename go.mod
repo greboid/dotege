@@ -58,6 +58,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.20.0 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/cpu/goacmedns v0.1.1 // indirect
+	github.com/csmith/legotapas v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deepmap/oapi-codegen v1.6.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
