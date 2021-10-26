@@ -10,8 +10,9 @@ require (
 	github.com/Microsoft/go-winio v0.4.17 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1183 // indirect
 	github.com/aws/aws-sdk-go v1.39.0 // indirect
+	github.com/csmith/legotapas v1.0.0
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v20.10.9+incompatible
+	github.com/docker/docker v20.10.10+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/exoscale/egoscale v0.67.0 // indirect
@@ -58,7 +59,6 @@ require (
 	github.com/cloudflare/cloudflare-go v0.20.0 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/cpu/goacmedns v0.1.1 // indirect
-	github.com/csmith/legotapas v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deepmap/oapi-codegen v1.6.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
