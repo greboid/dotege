@@ -121,7 +121,7 @@ func main() {
 						updatedContainers[event.Container.Id] = &event.Container
 						jitterTimer.Reset(100 * time.Millisecond)
 					} else {
-						loggers.main.Debugf("Container ignored due to proxy tag: %s (wanted: %s, got: %s)", event.Container.Name, event.Container.Labels[labelProxyTag], config.ProxyTag)
+						loggers.main.Debugf("Container ignored due to proxy tag: %s (wanted: '%s', got: '%s')", event.Container.Name, config.ProxyTag, event.Container.Labels[labelProxyTag])
 					}
 				case Removed:
 					loggers.main.Debugf("Container removed: %s", event.Container.Id)
