@@ -31,7 +31,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/ratelimit v0.1.0 // indirect
-	go.uber.org/zap v1.19.1
+	go.uber.org/zap v1.20.0
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/net v0.0.0-20211014222326-fd004c51d1d6
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43 // indirect
