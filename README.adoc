@@ -22,6 +22,16 @@ If specified, certificate files will be `chowned` to this numeric group ID.
 
 `DOTEGE_CERT_MODE`::
 The file mode that should be applied to certificate files. Defaults to `0600`.
++
+Take care when configuring this in a YAML file as YAML supports octal integers, resulting in the wrong value being
+passed:
++
+[source,yaml]
+----
+DOTEGE_CERT_MODE: 0640   # Passes a mode string of "416" to Dotege due to octal->decimal conversion
+DOTEGE_CERT_MODE: 640    # Works as expected
+DOTEGE_CERT_MODE: "0640" # Works as expected
+----
 
 `DOTEGE_CERT_UID`::
 If specified, certificate files will be `chowned` to this numeric user ID.
@@ -29,7 +39,7 @@ If specified, certificate files will be `chowned` to this numeric user ID.
 `DOTEGE_DEBUG`::
 Enables advanced logging of certain information in Dotege. Comma-separated list of
 topics to enable logging for. Optional. Valid options are:
-
++
  * `containers` - containers that are seen to start/stop
  * `headers` - custom headers (`com.chameth.headers` labels)
  * `hostnames` - mapping of containers to hostnames
