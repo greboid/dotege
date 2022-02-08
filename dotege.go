@@ -239,7 +239,7 @@ func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 		return false
 	}
 
-	err, cert := cm.GetCertificate(hostnames)
+	cert, err := cm.GetCertificate(hostnames)
 	if err != nil {
 		loggers.main.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false

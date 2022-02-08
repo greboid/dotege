@@ -182,14 +182,14 @@ func (c *CertificateManager) register() error {
 	return nil
 }
 
-func (c *CertificateManager) GetCertificate(domains []string) (error, *SavedCertificate) {
+func (c *CertificateManager) GetCertificate(domains []string) (*SavedCertificate, error) {
 	existing := c.loadCert(domains)
 	if existing != nil {
 		if existing.NotAfter.Before(time.Now().Add(time.Hour * 24 * 31)) {
 			c.logger.Debugf("Found existing certificate for %s, but it expires soon; renewing", domains)
 		} else {
 			c.logger.Debugf("Returning existing certificate for request %s", domains)
-			return nil, existing
+			return existing, nil
 		}
 	}
 
@@ -199,7 +199,7 @@ func (c *CertificateManager) GetCertificate(domains []string) (error, *SavedCert
 	}
 	cert, err := c.client.Certificate.Obtain(request)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	return c.saveCert(domains, cert)
 }
@@ -244,7 +244,7 @@ func (c *CertificateManager) removeCerts(domains []string) {
 	}
 }
 
-func (c *CertificateManager) saveCert(domains []string, cert *certificate.Resource) (error, *SavedCertificate) {
+func (c *CertificateManager) saveCert(domains []string, cert *certificate.Resource) (*SavedCertificate, error) {
 	c.removeCerts(domains)
 
 	savedCert := &SavedCertificate{
@@ -258,7 +258,7 @@ func (c *CertificateManager) saveCert(domains []string, cert *certificate.Resour
 		IssuerCertificate: cert.IssuerCertificate,
 	}
 	c.data.Certs = append(c.data.Certs, savedCert)
-	return c.save(), savedCert
+	return savedCert, c.save()
 }
 
 func (c *CertificateManager) getExpiry(cert *certificate.Resource) time.Time {
