@@ -40,6 +40,7 @@ frontend main
     http-request set-header X-Forwarded-Proto https if { ssl_fc }
     redirect scheme https code 301 if !{ ssl_fc }
     http-response set-header Strict-Transport-Security max-age=15768000 if { res.fhdr_cnt(Strict-Transport-Security) 0 }
+    http-response del-header Server
 {{- range .Hostnames }}
     use_backend {{ .Name | replace "." "_" }} if { hdr(host) -i {{ .Name }}
         {{- range .Alternatives }} || hdr(host) -i {{ . }} {{- end }} }
