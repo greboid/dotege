@@ -14,6 +14,17 @@ relevant networks.
 
 Dotege is configured using environment variables:
 
+==== Certificates
+
+`DOTEGE_CERTIFICATE_DEPLOYMENT`::
+Determines how Dotege will deploy certificates. Valid options are:
++
+* `disabled`: Dotege will not request certificates or deploy them to disk.
+* `combined`: The certificate and private key will be written to one file. Default.
+
++
+If certificate deployment is disabled, no other options in this section are used.
+
 `DOTEGE_CERT_DESTINATION`::
 The folder where certificates will be placed. Defaults to `/data/certs`.
 
@@ -36,18 +47,10 @@ DOTEGE_CERT_MODE: "0640" # Works as expected
 `DOTEGE_CERT_UID`::
 If specified, certificate files will be `chowned` to this numeric user ID.
 
-`DOTEGE_DEBUG`::
-Enables advanced logging of certain information in Dotege. Comma-separated list of
-topics to enable logging for. Optional. Valid options are:
-+
- * `containers` - containers that are seen to start/stop
- * `headers` - custom headers (`com.chameth.headers` labels)
- * `hostnames` - mapping of containers to hostnames
-
 `DOTEGE_DNS_PROVIDER`::
 The DNS provider to use. Must be one https://go-acme.github.io/lego/dns/[supported by Lego].
 The DNS provider will also be configured using environmental variables, as documented by
-the Lego project. Required.
+the Lego project. Required if certificate deployment is enabled.
 
 `DOTEGE_ACME_CACHE_FILE`::
 The path to a JSON file to store ACME credentials and certificates. This file will
@@ -56,7 +59,7 @@ be accessible to other users or processes. Defaults to `/data/config/certs.json`
 
 `DOTEGE_ACME_EMAIL`::
 The e-mail address to provide to the ACME service for updates, renewal reminders, etc.
-Required.
+Required if certificate deployment is enabled.
 
 `DOTEGE_ACME_ENDPOINT`::
 The ACME server to request certificates from. Defaults to the Let's Encrypt production
@@ -74,6 +77,20 @@ values are:
   * `8192` for RSA-8192
 +
 The default value is `P384`.
+
+`DOTEGE_WILDCARD_DOMAINS`::
+A space or comma separated list of domains that should use wildcard certificates.
+Defaults to an empty list.
+
+==== Other settings
+
+`DOTEGE_DEBUG`::
+Enables advanced logging of certain information in Dotege. Comma-separated list of
+topics to enable logging for. Optional. Valid options are:
++
+* `containers` - containers that are seen to start/stop
+* `headers` - custom headers (`com.chameth.headers` labels)
+* `hostnames` - mapping of containers to hostnames
 
 `DOTEGE_PROXYTAG`::
 Only containers with a matching `com.chameth.proxytag` label will be processed by
@@ -98,10 +115,6 @@ which is a bundled basic template for generating HAProxy configurations.
 `DOTEGE_USERS`::
 A YAML (or JSON) list of users, their password hashes, and their group memberships, to use for
 ACLs. See <<acls,Using ACLs>> below for detailed usage.
-
-`DOTEGE_WILDCARD_DOMAINS`::
-A space or comma separated list of domains that should use wildcard certificates.
-Defaults to an empty list.
 
 === Docker labels
 

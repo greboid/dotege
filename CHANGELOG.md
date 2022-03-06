@@ -1,3 +1,20 @@
+# v1.2.0
+
+## Features
+
+* Dotege can now be configured to not manage TLS certificates at all.
+  When `DOTEGE_CERTIFICATE_DEPLOYMENT` is set to `disabled` no certificates
+  will be requested or written to disk, and all certificate-related options
+  are ignored.
+
+## Other changes
+
+* Updated the default haproxy template (thanks @Greboid):
+  * Updated cipher suites in line with Mozilla's current intermediate recommendations
+  * Don't overwrite the Strict-Transport-Security header if sent by upstream
+  * Remove any Server header returned from upstream
+* Miscellaneous dependency updates
+
 # v1.1.0
 
 ## Features

@@ -12,39 +12,46 @@ import (
 )
 
 const (
-	envCertDestinationKey         = "DOTEGE_CERT_DESTINATION"
-	envCertDestinationDefault     = "/data/certs/"
-	envCertUserIdKey              = "DOTEGE_CERT_UID"
-	envCertUserIdDefault          = -1
-	envCertGroupIdKey             = "DOTEGE_CERT_GID"
-	envCertGroupIdDefault         = -1
-	envCertModeKey                = "DOTEGE_CERT_MODE"
-	envCertModeDefault            = 0600
-	envDebugKey                   = "DOTEGE_DEBUG"
-	envDebugContainersValue       = "containers"
-	envDebugHeadersValue          = "headers"
-	envDebugHostnamesValue        = "hostnames"
-	envDnsProviderKey             = "DOTEGE_DNS_PROVIDER"
-	envAcmeEmailKey               = "DOTEGE_ACME_EMAIL"
-	envAcmeEndpointKey            = "DOTEGE_ACME_ENDPOINT"
-	envAcmeKeyTypeKey             = "DOTEGE_ACME_KEY_TYPE"
-	envAcmeKeyTypeDefault         = "P384"
-	envAcmeCacheLocationKey       = "DOTEGE_ACME_CACHE_FILE"
-	envAcmeCacheLocationDefault   = "/data/config/certs.json"
-	envSignalContainerKey         = "DOTEGE_SIGNAL_CONTAINER"
-	envSignalContainerDefault     = ""
-	envSignalTypeKey              = "DOTEGE_SIGNAL_TYPE"
-	envSignalTypeDefault          = "HUP"
-	envTemplateDestinationKey     = "DOTEGE_TEMPLATE_DESTINATION"
-	envTemplateDestinationDefault = "/data/output/haproxy.cfg"
-	envTemplateSourceKey          = "DOTEGE_TEMPLATE_SOURCE"
-	envTemplateSourceDefault      = "./templates/haproxy.cfg.tpl"
-	envUsersKey                   = "DOTEGE_USERS"
-	envUsersDefault               = ""
-	envWildcardDomainsKey         = "DOTEGE_WILDCARD_DOMAINS"
-	envWildcardDomainsDefault     = ""
-	envProxyTagKey                = "DOTEGE_PROXYTAG"
-	envProxyTagDefault            = ""
+	envCertDestinationKey           = "DOTEGE_CERT_DESTINATION"
+	envCertDestinationDefault       = "/data/certs/"
+	envCertUserIdKey                = "DOTEGE_CERT_UID"
+	envCertUserIdDefault            = -1
+	envCertGroupIdKey               = "DOTEGE_CERT_GID"
+	envCertGroupIdDefault           = -1
+	envCertModeKey                  = "DOTEGE_CERT_MODE"
+	envCertModeDefault              = 0600
+	envDebugKey                     = "DOTEGE_DEBUG"
+	envDebugContainersValue         = "containers"
+	envDebugHeadersValue            = "headers"
+	envDebugHostnamesValue          = "hostnames"
+	envDnsProviderKey               = "DOTEGE_DNS_PROVIDER"
+	envAcmeEmailKey                 = "DOTEGE_ACME_EMAIL"
+	envAcmeEndpointKey              = "DOTEGE_ACME_ENDPOINT"
+	envAcmeKeyTypeKey               = "DOTEGE_ACME_KEY_TYPE"
+	envAcmeKeyTypeDefault           = "P384"
+	envAcmeCacheLocationKey         = "DOTEGE_ACME_CACHE_FILE"
+	envAcmeCacheLocationDefault     = "/data/config/certs.json"
+	envSignalContainerKey           = "DOTEGE_SIGNAL_CONTAINER"
+	envSignalContainerDefault       = ""
+	envSignalTypeKey                = "DOTEGE_SIGNAL_TYPE"
+	envSignalTypeDefault            = "HUP"
+	envTemplateDestinationKey       = "DOTEGE_TEMPLATE_DESTINATION"
+	envTemplateDestinationDefault   = "/data/output/haproxy.cfg"
+	envTemplateSourceKey            = "DOTEGE_TEMPLATE_SOURCE"
+	envTemplateSourceDefault        = "./templates/haproxy.cfg.tpl"
+	envUsersKey                     = "DOTEGE_USERS"
+	envUsersDefault                 = ""
+	envWildcardDomainsKey           = "DOTEGE_WILDCARD_DOMAINS"
+	envWildcardDomainsDefault       = ""
+	envProxyTagKey                  = "DOTEGE_PROXYTAG"
+	envProxyTagDefault              = ""
+	envCertificateDeploymentKey     = "DOTEGE_CERTIFICATE_DEPLOYMENT"
+	envCertificateDeploymentDefault = CertificateDeploymentCombined
+)
+
+const (
+	CertificateDeploymentCombined = "combined"
+	CertificateDeploymentDisabled = "disabled"
 )
 
 // Config is the user-definable configuration for Dotege.
@@ -59,6 +66,7 @@ type Config struct {
 	WildCardDomains        []string
 	Users                  []User
 	ProxyTag               string
+	CertificateDeployment  string
 
 	DebugContainers bool
 	DebugHeaders    bool
@@ -143,19 +151,12 @@ func createSignalConfig() []ContainerSignal {
 
 func createConfig() *Config {
 	debug := toMap(splitList(strings.ToLower(optionalStringVar(envDebugKey, ""))))
-	return &Config{
+	c := &Config{
 		Templates: []TemplateConfig{
 			{
 				Source:      optionalStringVar(envTemplateSourceKey, envTemplateSourceDefault),
 				Destination: optionalStringVar(envTemplateDestinationKey, envTemplateDestinationDefault),
 			},
-		},
-		Acme: AcmeConfig{
-			DnsProvider:   requiredStringVar(envDnsProviderKey),
-			Email:         requiredStringVar(envAcmeEmailKey),
-			Endpoint:      optionalStringVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
-			KeyType:       certcrypto.KeyType(optionalStringVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
-			CacheLocation: optionalStringVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
 		},
 		Signals:                createSignalConfig(),
 		DefaultCertDestination: optionalStringVar(envCertDestinationKey, envCertDestinationDefault),
@@ -165,11 +166,24 @@ func createConfig() *Config {
 		WildCardDomains:        splitList(optionalStringVar(envWildcardDomainsKey, envWildcardDomainsDefault)),
 		Users:                  readUsers(),
 		ProxyTag:               optionalStringVar(envProxyTagKey, envProxyTagDefault),
+		CertificateDeployment:  optionalStringVar(envCertificateDeploymentKey, envCertificateDeploymentDefault),
 
 		DebugContainers: debug[envDebugContainersValue],
 		DebugHeaders:    debug[envDebugHeadersValue],
 		DebugHostnames:  debug[envDebugHostnamesValue],
 	}
+
+	if c.CertificateDeployment != CertificateDeploymentDisabled {
+		c.Acme = AcmeConfig{
+			DnsProvider:   requiredStringVar(envDnsProviderKey),
+			Email:         requiredStringVar(envAcmeEmailKey),
+			Endpoint:      optionalStringVar(envAcmeEndpointKey, lego.LEDirectoryProduction),
+			KeyType:       certcrypto.KeyType(optionalStringVar(envAcmeKeyTypeKey, envAcmeKeyTypeDefault)),
+			CacheLocation: optionalStringVar(envAcmeCacheLocationKey, envAcmeCacheLocationDefault),
+		}
+	}
+
+	return c
 }
 
 func readUsers() []User {

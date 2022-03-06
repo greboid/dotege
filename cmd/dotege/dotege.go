@@ -94,7 +94,12 @@ func main() {
 	}
 
 	templates := createTemplates(config.Templates)
-	certificateManager := createCertificateManager(config.Acme)
+	var certificateManager *CertificateManager
+
+	if config.CertificateDeployment != CertificateDeploymentDisabled {
+		certificateManager = createCertificateManager(config.Acme)
+	}
+
 	containerMonitor := ContainerMonitor{client: dockerClient}
 
 	jitterTimer := time.NewTimer(time.Minute)
@@ -233,6 +238,10 @@ func signalContainer(dockerClient *client.Client) {
 }
 
 func deployCertForContainer(cm *CertificateManager, container *Container) bool {
+	if config.CertificateDeployment == CertificateDeploymentDisabled {
+		return false
+	}
+
 	hostnames := container.CertNames()
 	if len(hostnames) == 0 {
 		loggers.main.Debugf("No labels found for container %s", container.Name)
@@ -244,11 +253,13 @@ func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 		loggers.main.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false
 	} else {
-		return deployCert(cert)
+		// TODO: Add support for separate deployment (key in one file, cert in another). Check here + call a different
+		//       func.
+		return deployCombinedCert(cert)
 	}
 }
 
-func deployCert(certificate *SavedCertificate) bool {
+func deployCombinedCert(certificate *SavedCertificate) bool {
 	name := fmt.Sprintf("%s.pem", strings.ReplaceAll(certificate.Domains[0], "*", "_"))
 	target := path.Join(config.DefaultCertDestination, name)
 	content := append(certificate.Certificate, certificate.PrivateKey...)
