@@ -51,6 +51,7 @@ const (
 
 const (
 	CertificateDeploymentCombined = "combined"
+	CertificateDeploymentSplit    = "splitkeys"
 	CertificateDeploymentDisabled = "disabled"
 )
 

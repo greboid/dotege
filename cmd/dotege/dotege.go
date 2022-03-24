@@ -253,10 +253,57 @@ func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 		loggers.main.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false
 	} else {
-		// TODO: Add support for separate deployment (key in one file, cert in another). Check here + call a different
-		//       func.
-		return deployCombinedCert(cert)
+		if config.CertificateDeployment == CertificateDeploymentSplit {
+			return deploySplitCert(cert)
+		} else {
+			return deployCombinedCert(cert)
+		}
 	}
+}
+
+func deploySplitCert(certificate *SavedCertificate) bool {
+	name := fmt.Sprintf("%s.pem", strings.ReplaceAll(certificate.Domains[0], "*", "_"))
+	target := path.Join(config.DefaultCertDestination, name)
+
+	buf, _ := ioutil.ReadFile(target)
+	if bytes.Equal(buf, certificate.Certificate) {
+		loggers.main.Debugf("Certificate was up to date: %s", target)
+		return false
+	}
+
+	err := ioutil.WriteFile(target, certificate.Certificate, config.CertMode)
+	if err != nil {
+		loggers.main.Warnf("Unable to write certificate %s - %s", target, err.Error())
+		return false
+	}
+
+	if err = os.Chown(target, config.CertUid, config.CertGid); err != nil {
+		loggers.main.Warnf("Unable to chown certificate %s - %s", target, err.Error())
+		return false
+	}
+
+	name = fmt.Sprintf("%s.key", strings.ReplaceAll(certificate.Domains[0], "*", "_"))
+	target = path.Join(config.DefaultCertDestination, name)
+
+	buf, _ = ioutil.ReadFile(target)
+	if bytes.Equal(buf, certificate.PrivateKey) {
+		loggers.main.Debugf("Key was up to date: %s", target)
+		return false
+	}
+
+	err = ioutil.WriteFile(target, certificate.PrivateKey, config.CertMode)
+	if err != nil {
+		loggers.main.Warnf("Unable to write key %s - %s", target, err.Error())
+		return false
+	}
+
+	if err = os.Chown(target, config.CertUid, config.CertGid); err != nil {
+		loggers.main.Warnf("Unable to chown key %s - %s", target, err.Error())
+		return false
+	}
+
+	loggers.main.Infof("Updated certificate file %s", target)
+	return true
 }
 
 func deployCombinedCert(certificate *SavedCertificate) bool {
