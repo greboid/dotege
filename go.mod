@@ -15,7 +15,7 @@ require (
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/exoscale/egoscale v1.19.0 // indirect
+	github.com/exoscale/egoscale v0.67.0 // indirect
 	github.com/go-acme/lego/v4 v4.6.0
 	github.com/go-errors/errors v1.4.2 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
@@ -59,6 +59,8 @@ require (
 	github.com/cloudflare/cloudflare-go v0.35.1 // indirect
 	github.com/containerd/containerd v1.6.2 // indirect
 	github.com/cpu/goacmedns v0.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/deepmap/oapi-codegen v1.6.1 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dnsimple/dnsimple-go v0.71.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
@@ -102,6 +104,7 @@ require (
 	github.com/ovh/go-ovh v1.1.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/otp v1.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/sacloud/libsacloud v1.36.2 // indirect
@@ -110,6 +113,7 @@ require (
 	github.com/softlayer/softlayer-go v1.0.4 // indirect
 	github.com/softlayer/xmlrpc v0.0.0-20200409220501-5f089df7cb7e // indirect
 	github.com/spf13/cast v1.4.1 // indirect
+	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.373 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod v1.0.373 // indirect
@@ -128,4 +132,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ns1/ns1-go.v2 v2.6.3 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
