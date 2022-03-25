@@ -252,12 +252,10 @@ func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 	if err != nil {
 		loggers.main.Warnf("Unable to generate certificate for %s: %s", container.Name, err.Error())
 		return false
+	} else if config.CertificateDeployment == CertificateDeploymentSplit {
+		return deploySplitCert(cert)
 	} else {
-		if config.CertificateDeployment == CertificateDeploymentSplit {
-			return deploySplitCert(cert)
-		} else {
-			return deployCombinedCert(cert)
-		}
+		return deployCombinedCert(cert)
 	}
 }
 

@@ -1,3 +1,11 @@
+# v1.3.0
+
+## Features
+
+* Dotege can now deploy private keys separately to their corresponding
+  certificates by setting `DOTEGE_CERTIFICATE_DEPLOYMENT` to `splitkeys`.
+  (Thanks @Greboid)
+
 # v1.2.0
 
 ## Features

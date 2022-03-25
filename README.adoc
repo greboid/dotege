@@ -20,7 +20,8 @@ Dotege is configured using environment variables:
 Determines how Dotege will deploy certificates. Valid options are:
 +
 * `disabled`: Dotege will not request certificates or deploy them to disk.
-* `combined`: The certificate and private key will be written to one file. Default.
+* `combined`: The certificate and private key will be written to one `.pem` file. Default.
+* `splitkeys`: The certificate will be written to a `.pem` file, and the private key to a `.key` file.
 
 +
 If certificate deployment is disabled, no other options in this section are used.
