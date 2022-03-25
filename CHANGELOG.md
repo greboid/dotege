@@ -6,6 +6,11 @@
   certificates by setting `DOTEGE_CERTIFICATE_DEPLOYMENT` to `splitkeys`.
   (Thanks @Greboid)
 
+## Other changes
+
+* Update to Go 1.18
+* Miscellaneous dependency updates
+
 # v1.2.0
 
 ## Features
