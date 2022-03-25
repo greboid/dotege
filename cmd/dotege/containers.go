@@ -75,9 +75,9 @@ func (c *Container) Headers() map[string]string {
 
 // CertNames returns a list of names required on a certificate for this container, taking into account wildcard
 // configuration.
-func (c *Container) CertNames() []string {
+func (c *Container) CertNames(wildcards []string) []string {
 	if label, ok := c.Labels[labelVhost]; ok {
-		return applyWildcards(splitList(label), config.WildCardDomains)
+		return applyWildcards(splitList(label), wildcards)
 	} else {
 		return []string{}
 	}
@@ -123,7 +123,7 @@ func wildcardMatches(wildcard, domain string) bool {
 // Containers maps container IDs to their corresponding information
 type Containers map[string]*Container
 
-// Hostnames builds a mapping of primary hostnames to deals about the containers that use them
+// Hostnames builds a mapping of primary hostnames to details about the containers that use them
 func (c Containers) Hostnames() (hostnames map[string]*Hostname) {
 	loggers.hostnames.Debugf("Calculating hostnames for %d containers", len(c))
 	hostnames = make(map[string]*Hostname)

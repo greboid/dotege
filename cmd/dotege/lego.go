@@ -18,6 +18,7 @@ import (
 	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
 	"go.uber.org/zap"
+	"golang.org/x/exp/slices"
 )
 
 type AcmeUser struct {
@@ -217,15 +218,14 @@ func domainsMatch(domains1, domains2 []string) bool {
 	if len(domains1) != len(domains2) {
 		return false
 	}
-	sort.Strings(domains1)
-	sort.Strings(domains2)
-	for i := range domains1 {
-		if domains1[i] != domains2[i] {
-			return false
-		}
-	}
 
-	return true
+	// Create copies of the names, so we can in-place sort them without mutating random caller data.
+	names1 := append([]string(nil), domains1...)
+	names2 := append([]string(nil), domains2...)
+
+	sort.Strings(names1)
+	sort.Strings(names2)
+	return slices.Equal(names1, names2)
 }
 
 func (c *CertificateManager) removeCerts(domains []string) {

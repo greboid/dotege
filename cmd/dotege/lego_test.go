@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func Test_domainsMatch(t *testing.T) {
 	type args struct {
@@ -27,4 +31,14 @@ func Test_domainsMatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_domainsMatch_doesntMutateArgs(t *testing.T) {
+	domains1 := []string{"example.com", "b.example.com", "c.example.com"}
+	domains2 := []string{"example.com", "c.example.com", "b.example.com"}
+	match := domainsMatch(domains1, domains2)
+
+	assert.True(t, match)
+	assert.Equal(t, domains1, []string{"example.com", "b.example.com", "c.example.com"})
+	assert.Equal(t, domains2, []string{"example.com", "c.example.com", "b.example.com"})
 }

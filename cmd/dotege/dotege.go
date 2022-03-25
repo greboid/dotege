@@ -242,7 +242,7 @@ func deployCertForContainer(cm *CertificateManager, container *Container) bool {
 		return false
 	}
 
-	hostnames := container.CertNames()
+	hostnames := container.CertNames(config.WildCardDomains)
 	if len(hostnames) == 0 {
 		loggers.main.Debugf("No labels found for container %s", container.Name)
 		return false

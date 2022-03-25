@@ -1,3 +1,11 @@
+# v1.3.1
+
+## Bug fixes
+
+* Domain names in certificates and templates are now ordered consistently,
+  in the order they're specified in the `com.chameth.vhost` label. Previously,
+  these were accidentally alphabetised in a lot of situations.
+
 # v1.3.0
 
 ## Features
